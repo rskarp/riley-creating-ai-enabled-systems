@@ -1,6 +1,7 @@
 from typing import Dict
 import pandas as pd
 import sys
+import json
 from datetime import datetime
 
 
@@ -22,7 +23,7 @@ class DataEngineering():
         Parameters
         ----------
         filename : string
-            The name of the CSV file of transaction data to be read.
+            The name of the csv or parquet file of transaction data to be read.
 
         Returns
         -------
@@ -44,45 +45,20 @@ class DataEngineering():
         Parameters
         ----------
         filename : string
-            The name of the CSV file of transaction data to be read.
+            The name of the CSV or parquet file of transaction data to be read.
 
         Returns
         -------
         dataframe
             The data read from the given filename.
         """
-        return pd.read_csv(filename)
-
-    def __pretty_print_dictionary(self, dict: Dict, indents: int = 0) -> None:
-        """
-        Print the given dictionary in a human-readable format.
-
-        Parameters
-        ----------
-        dict : dictionary
-            The dictionary containing the data to be printed.
-        indents : integer, default 0
-            The number of indents to print before the dictionary content (useful for nested dictionaries).
-
-        Returns
-        -------
-        None
-        """
-        # Open bracket
-        print('\t'*(indents) + '{')
-        # Print each key and associated value, separated by a colon
-        for k in dict.keys():
-            val = dict[k]
-            leadingSpace = '\t'*(indents+1)
-            if isinstance(val, Dict):
-                # If the value is a dictionary, recursively call __pretty_print_dictionary to print nicely
-                print(f"{leadingSpace}'{k}': ")
-                self.__pretty_print_dictionary(val, indents+1)
-            else:
-                # Otherwise, print the key : value pair
-                print(f"{leadingSpace}'{k}': {val},")
-        # Close bracket
-        print('\t'*(indents) + '}')
+        fileType = filename.split('.')[-1].lower()
+        if fileType == 'csv':
+            return pd.read_csv(filename)
+        elif fileType == 'parquet':
+            return pd.read_parquet(filename, 'pyarrow')
+        else:
+            raise ValueError('File must be of type .csv or .parquet')
 
     def describe(self, N: int) -> Dict:
         """
@@ -111,7 +87,7 @@ class DataEngineering():
         }
         # Print the info dictionary nicely
         print('Additional Information:')
-        self.__pretty_print_dictionary(info)
+        print(json.dumps(info, indent=4))
         # Return the information dictionary
         return info
 
@@ -570,6 +546,21 @@ class DataEngineering():
                 return False
         # Return True since we've successfully looped through all columns without returning False
         return True
+
+    def get_dataset(self) -> pd.DataFrame:
+        """
+        Return the dataset in its current state.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        DataFrame
+            Contains all data as it currently exists in the dataset. 
+        """
+        return self.dataset
 
 
 def test():

@@ -7,3 +7,6 @@ __pycache__/
 # Environments
 .venv
 .env
+
+# My own test data to test individual functions
+fraud_detection_system/data/test.csv
