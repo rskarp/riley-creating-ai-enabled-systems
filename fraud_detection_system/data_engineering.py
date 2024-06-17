@@ -1,6 +1,7 @@
 from typing import Dict
 import pandas as pd
 import sys
+import json
 from datetime import datetime
 
 
@@ -22,7 +23,7 @@ class DataEngineering():
         Parameters
         ----------
         filename : string
-            The name of the CSV file of transaction data to be read.
+            The name of the csv or parquet file of transaction data to be read.
 
         Returns
         -------
@@ -44,45 +45,20 @@ class DataEngineering():
         Parameters
         ----------
         filename : string
-            The name of the CSV file of transaction data to be read.
+            The name of the CSV or parquet file of transaction data to be read.
 
         Returns
         -------
         dataframe
             The data read from the given filename.
         """
-        return pd.read_csv(filename)
-
-    def __pretty_print_dictionary(self, dict: Dict, indents: int = 0) -> None:
-        """
-        Print the given dictionary in a human-readable format.
-
-        Parameters
-        ----------
-        dict : dictionary
-            The dictionary containing the data to be printed.
-        indents : integer, default 0
-            The number of indents to print before the dictionary content (useful for nested dictionaries).
-
-        Returns
-        -------
-        None
-        """
-        # Open bracket
-        print('\t'*(indents) + '{')
-        # Print each key and associated value, separated by a colon
-        for k in dict.keys():
-            val = dict[k]
-            leadingSpace = '\t'*(indents+1)
-            if isinstance(val, Dict):
-                # If the value is a dictionary, recursively call __pretty_print_dictionary to print nicely
-                print(f"{leadingSpace}'{k}': ")
-                self.__pretty_print_dictionary(val, indents+1)
-            else:
-                # Otherwise, print the key : value pair
-                print(f"{leadingSpace}'{k}': {val},")
-        # Close bracket
-        print('\t'*(indents) + '}')
+        fileType = filename.split('.')[-1].lower()
+        if fileType == 'csv':
+            return pd.read_csv(filename)
+        elif fileType == 'parquet':
+            return pd.read_parquet(filename, 'pyarrow')
+        else:
+            raise ValueError('File must be of type .csv or .parquet')
 
     def describe(self, N: int) -> Dict:
         """
@@ -111,7 +87,7 @@ class DataEngineering():
         }
         # Print the info dictionary nicely
         print('Additional Information:')
-        self.__pretty_print_dictionary(info)
+        print(json.dumps(info, indent=4))
         # Return the information dictionary
         return info
 
@@ -271,7 +247,7 @@ class DataEngineering():
 
     def expand_dates(self, column_name: str) -> pd.DataFrame:
         """
-        Find day_of_week and hour_of_day from the dates in the given column, and append these values to the dataset in two new columns.
+        Find year, month, day_of_week, and hour_of_day from the dates in the given column, and append these values to the dataset in new columns.
 
         Parameters
         ----------
@@ -281,7 +257,7 @@ class DataEngineering():
         Returns
         -------
         dataframe
-            The dataset with day_of_week and hour_of_day columns appended. 
+            The dataset with year, month, day_of_week, and hour_of_day columns appended. 
         """
         # Return if the given column name doesn't exist
         if column_name not in self.dataset.columns:
@@ -293,6 +269,10 @@ class DataEngineering():
         if self.dataset.dtypes[column_name].name != 'datetime64[ns]':
             print(f'Column "{column_name}" is not date type.')
             return
+        # Generate year column
+        self.dataset[f'year_{column_name}'] = self.dataset[column_name].dt.year
+        # Generate month column
+        self.dataset[f'month_{column_name}'] = self.dataset[column_name].dt.month
         # Generate day_of_week column
         self.dataset[f'day_of_week_{column_name}'] = self.dataset[column_name].dt.day_of_week
         # Generate hour_of_day column
@@ -570,6 +550,21 @@ class DataEngineering():
                 return False
         # Return True since we've successfully looped through all columns without returning False
         return True
+
+    def get_dataset(self) -> pd.DataFrame:
+        """
+        Return the dataset in its current state.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        DataFrame
+            Contains all data as it currently exists in the dataset. 
+        """
+        return self.dataset
 
 
 def test():
