@@ -247,7 +247,7 @@ class DataEngineering():
 
     def expand_dates(self, column_name: str) -> pd.DataFrame:
         """
-        Find day_of_week and hour_of_day from the dates in the given column, and append these values to the dataset in two new columns.
+        Find year, month, day_of_week, and hour_of_day from the dates in the given column, and append these values to the dataset in new columns.
 
         Parameters
         ----------
@@ -257,7 +257,7 @@ class DataEngineering():
         Returns
         -------
         dataframe
-            The dataset with day_of_week and hour_of_day columns appended. 
+            The dataset with year, month, day_of_week, and hour_of_day columns appended. 
         """
         # Return if the given column name doesn't exist
         if column_name not in self.dataset.columns:
@@ -269,6 +269,10 @@ class DataEngineering():
         if self.dataset.dtypes[column_name].name != 'datetime64[ns]':
             print(f'Column "{column_name}" is not date type.')
             return
+        # Generate year column
+        self.dataset[f'year_{column_name}'] = self.dataset[column_name].dt.year
+        # Generate month column
+        self.dataset[f'month_{column_name}'] = self.dataset[column_name].dt.month
         # Generate day_of_week column
         self.dataset[f'day_of_week_{column_name}'] = self.dataset[column_name].dt.day_of_week
         # Generate hour_of_day column

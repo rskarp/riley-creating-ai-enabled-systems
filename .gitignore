@@ -9,4 +9,4 @@ __pycache__/
 .env
 
 # My own test data to test individual functions
-fraud_detection_system/data/test.csv
+fraud_detection_system/data/my_tests/*
