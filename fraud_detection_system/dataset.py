@@ -14,11 +14,13 @@ class Dataset():
         dataset : DataFrame
             The transaction data.
         version : str
-            The transformations that have been run on the dataset.
+            The unique version identifier the dataset.
         data_sources : List[DataFrame]
             List of DataFrames of source data from whcih self.dataset is constructed.
         data_source_names : List[str]
             List of filenames of source data from whcih self.dataset is constructed.
+        transformations : List[str]
+            The transformations that have been run on the dataset.
     """
 
     def __init__(self, raw_data):
@@ -38,6 +40,7 @@ class Dataset():
         self.data_sources = []
         self.data_source_names = []
         self.dataset = self.extract_data(raw_data)
+        self.transformations = []
 
     # Extract and Load
 
@@ -57,7 +60,7 @@ class Dataset():
         """
         # Get new data as DataFrame
         if isinstance(data, pd.DataFrame):
-            dataSource = data
+            dataSource = data.copy(deep=True)
             dataSourceName = 'DataFrame'
         else:
             dataSourceName = data
@@ -88,7 +91,7 @@ class Dataset():
 
         return self.dataset
 
-    def load(self, output_filename: str, format: str = None) -> None:
+    def load(self, output_filename: str, format: str = None) -> str:
         """
         Write self.dataset to file.
 
@@ -101,7 +104,8 @@ class Dataset():
 
         Returns
         -------
-        None
+        str:
+            The full filename of the saved file.
         """
         # Get filetype
         fileType = format.split('.')[-1].lower()
@@ -111,11 +115,13 @@ class Dataset():
         if fileType == 'csv':
             self.dataset.to_csv(fullFilename, index=False)
         elif fileType == 'parquet':
-            self.dataset.to_parquet(fullFilename, 'pyarrow')
+            self.dataset.to_parquet(fullFilename, engine='pyarrow')
         elif fileType == 'json':
             self.dataset.to_json(fullFilename, index=False)
         else:  # default to parquet if not specified
-            self.dataset.to_parquet(fullFilename, 'pyarrow')
+            self.dataset.to_parquet(fullFilename, engine='pyarrow')
+
+        return fullFilename
 
     # Description
 
@@ -187,7 +193,7 @@ class Dataset():
         """
         return self.dataset.sample(n=N, random_state=seed)
 
-    def _stratified_sample(self, N: int, strat_factors: List[str]) -> pd.DataFrame:
+    def _stratified_sample(self, N: int, strat_factors: List[str], seed: int = None) -> pd.DataFrame:
         """
         Select samples from self.dataset.
 
@@ -197,13 +203,15 @@ class Dataset():
             The number of rows to return per stratum if using stratified sampling.
         stratification_factors : List[str]
             The names of columns to be used as stratification factors.
+        seed : int (optional)
+            The random seed value to be used for the random state.
 
         Returns
         -------
         DataFrame
             The samples selected as a subset from self.dataset.
         """
-        return self.dataset.groupby([f.lower() for f in strat_factors], group_keys=False).apply(lambda x: x.sample(min(len(x), N)))
+        return self.dataset.groupby([f.lower() for f in strat_factors], group_keys=False, observed=False).apply(lambda x: x.sample(min(len(x), N), random_state=seed))
 
     def sample(self, *args, **kwargs) -> pd.DataFrame:
         """
@@ -214,9 +222,11 @@ class Dataset():
         N : int
             The number of rows to return per stratum if using stratified sampling, or total for random sampling.
         sampling_method : str
-            The sampling method to use: random or stratified.
+            The sampling method to use: random or stratified or labeled.
         stratification_factors : List[str]
             The names of columns to be used as stratification factors.
+        inplace : bool (deafult = False)
+            Boolean indicating whether to apply the sampling to self.dataset, or just return the sampled data.
         seed : int (optional)
             The random seed value to be used for the random state.
 
@@ -228,11 +238,22 @@ class Dataset():
         sampMethod = kwargs.get('sampling_method', '')
         N = kwargs.get('N', 0)
         seed = kwargs.get('seed')
+        inplace = kwargs.get('inplace')
         strat_factors = kwargs.get('stratification_factors', [])
+
+        sampled_dataset = self.dataset.copy()
         if sampMethod == 'random':
-            return self._random_sample(N, seed)
+            sampled_dataset = self._random_sample(N, seed)
         elif sampMethod == 'stratified':
-            return self._stratified_sample(N, strat_factors)
+            sampled_dataset = self._stratified_sample(N, strat_factors, seed)
+        elif sampMethod == 'labeled':
+            sampled_dataset = self.dataset.loc[self.dataset['is_fraud'] >= 0, :]
+
+        if inplace == True:
+            self.dataset = sampled_dataset
+            self.transformations.append(sampMethod)
+
+        return sampled_dataset
 
     # Measures and Logging
 
@@ -266,7 +287,7 @@ class Dataset():
         float
             The table completeness.
         """
-        return dataframe.isna().sum().sum()/dataframe.size
+        return (~dataframe.isna()).sum().sum()/dataframe.size
 
     def _get_mean_col_completness(self, dataframe: pd.DataFrame) -> float:
         """
@@ -282,7 +303,7 @@ class Dataset():
         float
             The mean column completeness metric.
         """
-        return (dataframe.isna().sum()/dataframe.shape[0]).mean()
+        return ((~dataframe.isna()).sum()/dataframe.shape[0]).mean()
 
     def _get_mean_row_completness(self, dataframe: pd.DataFrame) -> float:
         """
@@ -298,7 +319,7 @@ class Dataset():
         float
             The mean row completeness metric.
         """
-        return (dataframe.isna().sum(axis=1)/dataframe.shape[1]).mean()
+        return ((~dataframe.isna()).sum(axis=1)/dataframe.shape[1]).mean()
 
     def describe(self, dataframe: pd.DataFrame, output_file: str = None) -> Dict:
         """
@@ -318,13 +339,20 @@ class Dataset():
         """
         # Version and data source information is based on self.dataset since that's all that's stored
         # Columns, date ranges, and metrics are based on the dataframe input parameter.
+        if 'trans_date_trans_time' in dataframe.columns:
+            date_ranges = (dataframe['trans_date_trans_time'].min().strftime(
+                '%Y-%m-%d_%H-%M-%S_%f'), dataframe['trans_date_trans_time'].max().strftime('%Y-%m-%d_%H-%M-%S_%f'))
+        else:
+            date_ranges = []
+
         info = {
             'description': {
                 'version': self.version,
                 'data sources': self.data_source_names,
                 'column names': list(dataframe.columns),
-                'date ranges': (dataframe['trans_date_trans_time'].min().strftime('%Y-%m-%d_%H-%M-%S_%f'), dataframe['trans_date_trans_time'].max().strftime('%Y-%m-%d_%H-%M-%S_%f')),
-                'num data sources': len(self.data_sources)
+                'date ranges': date_ranges,
+                'num data sources': len(self.data_sources),
+                'transformations': self.transformations
             },
             'measures': {
                 'num_samples': dataframe.shape[0],
@@ -359,7 +387,7 @@ class Dataset():
         DataFrame
             Contains all data as it currently exists in the dataset. 
         """
-        return self.dataset
+        return self.dataset.copy(deep=True)
 
 
 def test():

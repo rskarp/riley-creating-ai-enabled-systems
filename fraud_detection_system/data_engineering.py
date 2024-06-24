@@ -45,7 +45,7 @@ class DataEngineering():
         Parameters
         ----------
         filename : string
-            The name of the CSV or parquet file of transaction data to be read.
+            The name of the CSV, json, or parquet file of transaction data to be read.
 
         Returns
         -------
@@ -57,8 +57,11 @@ class DataEngineering():
             return pd.read_csv(filename)
         elif fileType == 'parquet':
             return pd.read_parquet(filename, 'pyarrow')
+        elif fileType == 'json':
+            return pd.read_json(filename)
         else:
-            raise ValueError('File must be of type .csv or .parquet')
+            raise ValueError(
+                'File must be of type .csv, .json, or .parquet')
 
     def describe(self, N: int) -> Dict:
         """
@@ -290,11 +293,11 @@ class DataEngineering():
         Parameters
         ----------
         low : float
-            The upper bound for the amount value at which the 'low' category ends (representing 25% quartile mark).
+            The upper bound for the quantile value at which the 'low' category ends (e.g. 0.25).
         medium : float
-            The center for the amount value at which the 'medium' category is centered (representing 50% quartile mark).
+            The center for the quantile value at which the 'medium' category is centered (e.g. 0.5). Note: this is unused due to how qcut works and the fact that we're dividing into 3 categories.
         high : float
-            The lower bound for the amount value at which the 'high' category begins (representing 75% quartile mark).
+            The lower bound for the quantile value at which the 'high' category begins (e.g. 0.75).
 
         Returns
         -------
@@ -305,17 +308,16 @@ class DataEngineering():
         self.clean_missing_values()
         # Initialize empty amt_category column
         colName = f'amt_category_{low}-{medium}-{high}'
-        self.dataset[colName] = pd.NA
-        # Generate 'low' category for transaction amounts below 'low' (25%) input value
-        self.dataset.loc[self.dataset['amt'] < low, colName] = 'low'
-        # Generate 'medium' category for transaction amounts between 'low' (25%) and 'high' (75%) input values
-        self.dataset.loc[(self.dataset['amt'] >= low) & (
-            self.dataset['amt'] < high), colName] = 'medium'
-        # Generate 'high' category for transaction amounts above the 'high' (75%) input value
-        self.dataset.loc[self.dataset['amt'] >= high, colName] = 'high'
-        # Convert column datatype to category
-        self.dataset[colName] = self.dataset[colName].astype('category')
-        # Track that this transformation occurred
+        # Use qcut to discritize amount column into categorical bins.
+        # We must use 0 and 1 as lower/upper quantile bounds to ensure all data is categorized and avoid NA values.
+        # Since we have 3 specicified labels ('low', 'medium', 'high') and the upper/lower quantile bounds 0 and 1,
+        #   then qcut() requires only 2 other quantile values. By providing low and high along with our upper and lower bounds 0 and 1,
+        #   then we'll end up with 3 categories, where medium is everything between low and high.
+        #   The medium input value cannot be used due to how qcut() works since we have 3 category labels.
+        #   e.g. low=0.25 and high=0.75, then low is < 0.25, medium is between 0.25 and 0.75, and high is > 0.75
+        categories = pd.qcut(self.dataset['amt'], [0, low, high, 1], labels=[
+                             'low', 'medium', 'high'])
+        self.dataset[colName] = categories
         self.transformations.append('categorize_transactions')
         # Return the dataframe
         return self.dataset
@@ -358,7 +360,7 @@ class DataEngineering():
             # Get column values
             colData = numerical_data[colName]
             colKey = 'day_of_week' if 'day_of_week' in colName else 'hour_of_day' if 'hour_of_day' in colName else colName
-            bounds = expected_bounds.get(colKey)
+            bounds = expected_bounds.get(colKey, [-sys.maxsize, sys.maxsize])
             # Check if data in the current column is within valid range
             colValid = ((colData >= bounds[0]) & (colData <= bounds[1])).all()
             # Return False if we've found an invalid column
@@ -564,7 +566,7 @@ class DataEngineering():
         DataFrame
             Contains all data as it currently exists in the dataset. 
         """
-        return self.dataset
+        return self.dataset.copy(deep=True)
 
 
 def test():
@@ -591,7 +593,7 @@ def test():
     de.resolve_anomalous_dates('dob')
     de.expand_dates('trans_date_trans_time')
     de.expand_dates('dob')
-    de.categorize_transactions(10, 50, 75)
+    de.categorize_transactions(0.25, 0.5, 0.75)
     de.describe(10)
     print('Validating data...')
     print(f'range_checks passed: {de.range_checks()}')
