@@ -6,9 +6,7 @@ from dataset import Dataset
 from data_engineering import DataEngineering
 from feature_engineering import FeatureEngineering
 from model import Model
-import numpy as np
 from metrics import Metrics
-from sklearn.model_selection import train_test_split
 
 
 class DeploymentPipeline:
@@ -24,7 +22,7 @@ class DeploymentPipeline:
         print('Initializing deployment pipline. Please wait...')
         self.dataset_train = self.get_train_source()
         self.dataset_test = self.get_test_source()
-        self.metrics = Metrics()
+        self.metrics = None
         self.model = Model()
         self.allCols = [
             "Index",
@@ -126,6 +124,40 @@ class DeploymentPipeline:
         # Use 3rd raw dataset as test data
         return self.clean_raw_data('./data/transactions_2.json')
 
+    def _prepare_dataset_for_model_inference(self, model_version: str, data: pd.DataFrame, random_state: int = 1, predict: bool = False) -> pd.DataFrame:
+        '''
+        Extract features from given data using transformation steps used to train the given model version.
+
+        Parameters:
+        model_version (str): The model version to use to determine transformation parameters (for scale, standardize, and best feature filter).
+        data (DataFrame): The raw data to be cleaned, transformed, and features extracted.
+        random_state (int, Optional. Default = 1): The random_state value to use for reproducibility.
+        predict (bool, Optional. Default = False): Boolean indicating whether the data is to be predicted (therefore is unlabeled)
+
+        Returns:
+        DataFrame: the features extracted from the dataset.
+        '''
+        # Get name of training dataset from model log
+        model_log = self.get_log('models', model_version)
+        features_log = self.get_log(
+            'features', model_log['description']['train_dataset'])
+        # Get training data column stats from dataset features log, so we can use them for test data transformation
+        stats = features_log['description']['measures']
+        col_stats = {
+            'mean': pd.Series(stats['numeric_col_means']),
+            'std': pd.Series(stats['numeric_col_standard_deviations']),
+            'min': pd.Series(stats['numeric_col_minimums']),
+            'max': pd.Series(stats['numeric_col_maximums'])
+        }
+        # Get column names used in training
+        colNames = features_log['description']['column_names']
+        # Clean input data
+        features = FeatureEngineering(
+            self.clean_raw_data(data, predict).get_dataset())
+        # Transform and extract features from input data
+        return features.generate_test_features(
+            stats=col_stats, random_state=random_state, filter_cols=colNames)
+
     def predict(self, model_version: str, data: Dict, random_state: int = 1):
         """
         Make predictions using the deployed model.
@@ -143,29 +175,14 @@ class DeploymentPipeline:
             self.model.set_model(f'resources/models/{model_version}.joblib')
         except FileNotFoundError:
             raise FileNotFoundError(f'Model not {model_version} found')
-        # Get name of training dataset from model log
-        model_log = self.get_log('models', model_version)
-        features_log = self.get_log(
-            'features', model_log['description']['train_dataset'])
-        # Get training data column stats from dataset features log, so we can use them for test data transformation
-        stats = features_log['description']['measures']
-        col_stats = {
-            'mean': pd.Series(stats['numeric_col_means']),
-            'std': pd.Series(stats['numeric_col_standard_deviations']),
-            'min': pd.Series(stats['numeric_col_minimums']),
-            'max': pd.Series(stats['numeric_col_maximums'])
-        }
-        # Get column names used in training
-        colNames = features_log['description']['column_names']
+        # Get features for data point
         df = pd.DataFrame(data, index=[0], columns=self.allCols)
-        # Transform predition input data
-        features = FeatureEngineering(
-            self.clean_raw_data(df, True).get_dataset())
-        feats = features.generate_test_features(
-            stats=col_stats, random_state=random_state, filter_cols=colNames)
-        feats = feats.loc[:, feats.columns != 'is_fraud']
+        features = self._prepare_dataset_for_model_inference(
+            model_version, df, random_state, True)
+        # Remove label column for prediction
+        features = features.loc[:, features.columns != 'is_fraud']
         # Predict using the model
-        prediction = self.model.predict(feats)
+        prediction = self.model.predict(features)
         return prediction
 
     def get_log(self, component, reference):
@@ -249,7 +266,34 @@ class DeploymentPipeline:
         Dict : 
             Description from the logs.
         '''
-        return self.model.train(model_version, model_type, dataset_version, hyperparameters, random_state)
+        description = self.model.train(
+            model_version, model_type, dataset_version, hyperparameters, random_state)
+        data = pd.read_parquet(
+            f'resource/datasets/{dataset_version}.parquet', engine='pyarrow')
+        features = self._prepare_dataset_for_model_inference(
+            model_version, data, random_state)
+        metrics = Metrics(features, model_version)
+        description['train_metrics'] = metrics.run_metrics()
+        return description
+
+    def get_model_metrics(self, model_version: str, dataset_version: str, random_state: int = 1) -> Dict:
+        """
+        Get the model metrics for a given model and dataset version.
+
+        Parameters:
+        dataset_version (str): The version of the dataset to use for inference.
+        model_version (str): The version of the model to use for predictions.
+        random_state (int, Optional. Default 1):  The random_state value to use for reproducibility.
+
+        Returns:
+        Dict: Dictionary containing the model metrics.
+        """
+        data = pd.read_parquet(
+            f'resource/datasets/{dataset_version}.parquet', engine='pyarrow')
+        features = self._prepare_dataset_for_model_inference(
+            model_version, data, random_state)
+        metrics = Metrics(features, model_version)
+        return metrics.run_metrics()
 
     def get_resource_list(self, resourceType: str) -> List[str]:
         '''

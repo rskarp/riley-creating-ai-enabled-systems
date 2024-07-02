@@ -60,6 +60,21 @@ class Model:
         """
         Train the model with provided training data.
 
+        Parameters:
+        model_version : str
+            The name of the model version for this model.
+        model_type : str
+            The type of model to train: random_forest, stocahstic_gradient_descent, or logistic_regression.
+        dataset_version : str
+            The dataset to use for training data.
+        hyperparameters : Dict
+            The hyperparameters used for tuning. The value of each key in the Dict should be a list.
+        random_state : int (Optoinal. Default 1)
+            The random_state value to use for reproducibility.
+
+        Returns:
+        Dict : 
+            Description from the logs.
         """
         # Read in training data from dataset file
         train_features = pd.read_parquet(

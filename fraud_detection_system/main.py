@@ -216,6 +216,43 @@ def get_model_list():
     return jsonify({"models": datasets}), 200
 
 
+@app.route('/model_metrics', methods=['GET'])
+def get_model_metrics():
+    """
+    Route to get the model metrics for a given model and dataset version.
+
+    URL Params:
+    dataset_version (str): The version of the dataset to use for inference.
+    model_version (str): The version of the model to use for predictions.
+
+    Returns:
+    JSON response with the model metrics.
+    """
+    timestamp = datetime.datetime.now()
+    dataset_version = request.args.get('dataset_version')
+    model_version = request.args.get('model_version')
+    random_state = int(request.args.get('random_state', 1))
+    if not dataset_version:
+        return jsonify({"error": "No dataset_version specified"}), 400
+    if not model_version:
+        return jsonify({"error": "No model_version specified"}), 400
+
+    metrics = pipeline.get_model_metrics(
+        dataset_version, model_version, random_state)
+    pipeline.log(
+        'metrics',
+        log_entry={
+            'time': timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+            'model_version': model_version,
+            'dataset_version': dataset_version,
+            'metrics': metrics
+        },
+        log_file=f'{timestamp.strftime("%Y%m%d_%H%M%S")}.json'
+    )
+
+    return jsonify({"metrics": metrics}), 200
+
+
 @app.route('/predict', methods=['POST'])
 def predict():
     """
