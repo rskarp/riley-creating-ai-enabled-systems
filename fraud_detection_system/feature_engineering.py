@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Union, List, Dict
 import pandas as pd
 import numpy as np
+import os
 import json
 from imblearn.over_sampling import SMOTENC
 from sklearn.feature_selection import SelectPercentile
@@ -56,6 +57,130 @@ class FeatureEngineering():
         self.numeric_feature_scores = {}
         # Initialize dictionary of column stats
         self.column_stats = {'mean': [], 'std': [], 'min': [], 'max': []}
+        self.id_cols = ['Index', 'trans_num']
+        self.datetime_cols = ['dob', 'trans_date_trans_time', 'unix_time']
+        self.continuous_cols = ['amt', 'lat', 'long', 'city_pop', 'merch_lat', 'merch_long', 'dob',
+                                'trans_date_trans_time', 'unix_time', 'year_trans_date_trans_time', 'year_dob']
+        self.categorical_cols = ['is_fraud', 'category', 'cc_num', 'merchant', 'first', 'last', 'sex', 'street', 'city', 'zip', 'job', 'month_trans_date_trans_time',
+                                 'state', 'day_of_week_trans_date_trans_time', 'hour_of_day_trans_date_trans_time', 'month_dob', 'day_of_week_dob', 'hour_of_day_dob']
+
+    # Deployment
+
+    def generate_features(self, version: str, stats: Dict = None, run_smote: bool = False, random_state: int = 1) -> Dict:
+        '''
+        Generate features from the given dataset version.
+
+        Parameters:
+        version : str
+            The version name to use for the data source.
+        stats : Dict
+            Dictionary of column stats used for scale and standardize steps.
+        run_smote : bool (Optional. Default False)
+            Boolean flag indicating whether or not to run SMOTE if is_fraud classes are imbalanced.
+        random_state : int (Optional. Default 1)
+            The random_state value to use for reproducibility.
+
+        Returns:
+        Dict:
+            Description of the features.
+        '''
+        # Apply transformations to feature data
+        # Remove identifier columns
+        self.transform(
+            transformation='remove', column_names=self.id_cols, inplace=True)
+        # Convert dates to numbers
+        self.transform(
+            transformation='to_numeric', column_names=self.datetime_cols, inplace=True)
+        # Convert categorical columns to category type
+        self.transform(
+            transformation='to_category', column_names=self.categorical_cols, inplace=True)
+
+        if run_smote == True:
+            fraud_proportion = (self.get_dataset()["is_fraud"] == 1).sum(
+            )/self.get_dataset().shape[0]
+            # If fraud proportion is unbalanced,
+            #   oversample using SMOTE to increase the number or fraudlent training samples
+            if abs(0.5-fraud_proportion) > 0.1:
+                self.transform(
+                    transformation='oversample', seed=random_state, inplace=True)
+
+        # Additional transformations after SMOTE
+        col_stats = stats if stats is not None else self.calculate_column_stats()
+        # Encode categorical columns
+        self.transform(
+            transformation='encode', column_names=self.categorical_cols, inplace=True)
+        # Standardize
+        self.transform(transformation='standardize',
+                       stats=col_stats, column_names=self.continuous_cols, inplace=True)
+        # Scale
+        self.transform(
+            transformation='scale', stats=col_stats, column_names=self.continuous_cols, inplace=True)
+        # Add Gaussian noise
+        self.transform(
+            transformation='add_noise', column_names=self.continuous_cols, inplace=True, seed=random_state)
+
+        # Find the best features from the training data
+        percentile = 50
+        categorical_data = self.transform(
+            transformation='select_categorical_features', percentile=percentile, column_names=self.categorical_cols)
+        numeric_data = self.transform(
+            transformation='select_numeric_features', percentile=percentile, column_names=self.continuous_cols)
+        # Filter features to only include the best features
+        self.transform(transformation='filter_columns',
+                       column_names=[*categorical_data.columns,
+                                     *numeric_data.columns, 'is_fraud'],
+                       inplace=True)
+
+        # Save features to file
+        format = 'parquet'
+        os.makedirs('resources/features', exist_ok=True)
+        file_path = f"resources/features/{version}"
+        self.load(file_path, format, False)
+        # Return description
+        return self.describe(self.dataset, col_stats=col_stats, version=version)
+
+    def generate_test_features(self, stats: Dict = None, random_state: int = 1, filter_cols: List[str] = []) -> pd.DataFrame:
+        '''
+        Generate features for test/production data.
+
+        Parameters:
+        stats : Dict
+            Dictionary of column stats used for scale and standardize steps.
+        random_state : int (Optional. Default 1)
+            The random_state value to use for reproducibility.
+        filter_cols : List[str]
+            The names of columns to include in the feature data.
+
+        Returns:
+        Dataframe:
+            The generated features.
+        '''
+        # Remove identifier columns
+        self.transform(
+            transformation='remove', column_names=self.id_cols, inplace=True)
+        # Convert dates to numbers
+        self.transform(
+            transformation='to_numeric', column_names=self.datetime_cols, inplace=True)
+        # Convert categorical columns to category type
+        self.transform(
+            transformation='to_category', column_names=self.categorical_cols, inplace=True)
+        # Encode categorical columns
+        self.transform(
+            transformation='encode', column_names=self.categorical_cols, inplace=True)
+        # Standardize
+        self.transform(transformation='standardize',
+                       stats=stats, column_names=self.continuous_cols, inplace=True)
+        # Scale
+        self.transform(
+            transformation='scale', stats=stats, column_names=self.continuous_cols, inplace=True)
+        # Add Gaussian noise
+        self.transform(
+            transformation='add_noise', column_names=self.continuous_cols, inplace=True, seed=random_state)
+        # Filter features to only include the best features
+        self.transform(transformation='filter_columns',
+                       column_names=[*filter_cols, 'is_fraud'],
+                       inplace=True)
+        return self.get_dataset()
 
     # Extract and Load
 
@@ -75,7 +200,7 @@ class FeatureEngineering():
         """
         # Get new data as DataFrame
         if isinstance(data, pd.DataFrame):
-            dataSource = data
+            dataSource = data.copy(deep=True)
             dataSourceName = 'DataFrame'
         else:
             dataSourceName = data
@@ -106,7 +231,7 @@ class FeatureEngineering():
 
         return self.dataset
 
-    def load(self, output_filename: str, format: str = None) -> None:
+    def load(self, output_filename: str, format: str = None, add_version: bool = True) -> None:
         """
         Write self.dataset to file.
 
@@ -116,6 +241,8 @@ class FeatureEngineering():
             The path and filename where the dataset will be written to.
         format : string (optional)
             The format of the output file (accept: .csv, .json, .parquet).
+        add_version : bool (Optional. Default True)
+            Boolean flag indicating whether to append self.version to filename.
 
         Returns
         -------
@@ -125,7 +252,8 @@ class FeatureEngineering():
         # Get filetype
         fileType = format.split('.')[-1].lower()
         # Create full output filename
-        fullFilename = f'{output_filename}_v{self.version}.{fileType}'
+        version = f'_v{self.version}' if add_version else ''
+        fullFilename = f'{output_filename}{version}.{fileType}'
         # Save file based on format
         if fileType == 'csv':
             self.dataset.to_csv(fullFilename, index=False)
@@ -189,25 +317,29 @@ class FeatureEngineering():
 
     # Transformations
 
-    def calculate_column_stats(self) -> Dict:
+    def calculate_column_stats(self, dataframe: pd.DataFrame = None) -> Dict:
         """
         Calculate the column statistics for self.dataset.
 
         Parameters
         ----------
-        None
+        dataframe : DataFrame (Optional)
+            The dataframe to calculate statistics for. If empty, self.dataset will be used.
 
         Returns
         -------
         Dict
-            The means, standard deviations, minimums, and maximums of self.dataset.
+            The means, standard deviations, minimums, maximums, variances, and correlations of the dataframe.
         """
-        numeric_data = self.dataset.select_dtypes('number')
+        numeric_data = dataframe.select_dtypes(
+            'number') if dataframe is not None else self.dataset.select_dtypes('number')
         self.column_stats = {
             'mean': numeric_data.mean(),
             'std': numeric_data.std(),
             'min': numeric_data.min(),
-            'max': numeric_data.max()
+            'max': numeric_data.max(),
+            'var': numeric_data.var(),
+            'corr': numeric_data.corr(),
         }
         return self.column_stats
 
@@ -228,13 +360,15 @@ class FeatureEngineering():
             The scaled columns of the dataset.
         """
         # Calculate stats if not provided
-        colStats = self.calculate_column_stats() if stats == None else stats
+        colStats = self.calculate_column_stats() if stats is None else stats
         # Get scaling stats
         mins = colStats['min'][cols]
         maxs = colStats['max'][cols]
+        # Replace 0 with 1 to avoid division by 0
+        diffs = (maxs-mins).replace(0, 1)
 
         data = self.dataset.loc[:, cols]
-        return (data-mins)/(maxs-mins)
+        return (data-mins)/diffs
 
     def _standardize(self, cols: List[str], stats: Dict = None) -> pd.DataFrame:
         """
@@ -253,11 +387,12 @@ class FeatureEngineering():
             The standardized columns of the dataset.
         """
         # Calculate stats if not provided
-        colStats = self.calculate_column_stats() if stats == None else stats
+        colStats = self.calculate_column_stats() if stats is None else stats
         # Get standardization stats
         means = colStats['mean'][cols]
         stds = colStats['std'][cols]
-
+        # Replace 0 with 1 to avoid division by 0
+        stds.replace(0, 1, inplace=True)
         data = self.dataset.loc[:, cols]
         return (data-means)/stds
 
@@ -367,7 +502,6 @@ class FeatureEngineering():
         # Create features and target
         X = self.dataset.loc[:, cleanCols]
         y = self.dataset.loc[:, 'is_fraud']
-
         # Select top percentile features with highest chi-squared statistics
         chi2_selector = SelectPercentile(chi2, percentile=percentile)
         chi2_selector.fit(X, y)
@@ -401,7 +535,6 @@ class FeatureEngineering():
         # Create features and target
         X = self.dataset.loc[:, cleanCols]
         y = self.dataset.loc[:, 'is_fraud']
-
         # Select top percentile features with highest anova statistics
         anova_selector = SelectPercentile(f_classif, percentile=percentile)
         anova_selector.fit(X, y)
@@ -516,7 +649,7 @@ class FeatureEngineering():
         """
         return dataframe.select_dtypes('number').var()
 
-    def describe(self, dataframe: pd.DataFrame, output_file: str = None) -> Dict:
+    def describe(self, dataframe: pd.DataFrame, col_stats: Dict = None, output_file: str = None, version: str = None) -> Dict:
         """
         Generate description of the dataset and measurements assessing the quality/integrity of the features.
 
@@ -524,9 +657,12 @@ class FeatureEngineering():
         ----------
         dataframe : DataFrame
             The data to describe.
+        col_stats : Dict
+            The column statistics to store.
         output_file : str (Optional)
             The path and filename where the description will be written to.
-
+        version : str (Optional. Default None)
+            The version name to use instead of self.version.
         Returns
         -------
         Dict
@@ -540,20 +676,24 @@ class FeatureEngineering():
         else:
             date_ranges = []
 
+        stats = col_stats if col_stats is not None else self.calculate_column_stats(
+            dataframe)
         info = {
-            'description': {
-                'version': self.version,
-                'data sources': self.data_source_names,
-                'column names': list(dataframe.columns),
-                'date ranges': date_ranges,
-                'num data sources': len(self.data_sources),
-                'transformations': self.transformations,
-                'categorical_feature_chi2_scores': self.categorical_feature_scores,
-                'numeric_feature_anova_scores': self.numeric_feature_scores
-            },
+            'version': version if version is not None else self.version,
+            'data_sources': self.data_source_names,
+            'column_names': list(dataframe.columns),
+            'date_ranges': date_ranges,
+            'num_data_sources': len(self.data_sources),
+            'transformations': self.transformations,
+            'categorical_feature_chi2_scores': self.categorical_feature_scores,
+            'numeric_feature_anova_scores': self.numeric_feature_scores,
             'measures': {
-                'numeric_col_correlations': self._get_numeric_col_correlations(dataframe).to_numpy().tolist(),
-                'numeric_col_variances': self._get_numeric_col_variances(dataframe).to_dict()
+                'numeric_col_correlations': stats['corr'].to_numpy().tolist(),
+                'numeric_col_variances': stats['var'].to_dict(),
+                'numeric_col_means': stats['mean'].to_dict(),
+                'numeric_col_standard_deviations': stats['std'].to_dict(),
+                'numeric_col_minimums': stats['min'].to_dict(),
+                'numeric_col_maximums': stats['max'].to_dict()
             }
         }
 
@@ -585,10 +725,9 @@ class FeatureEngineering():
 
 
 def test():
-    testDir = './data/my_tests/'
     csv = FeatureEngineering('./data/transactions_0.csv')
     print(csv.get_data_source())
-    csv.load(f'{testDir}csv_to_json', '.json')
+    csv.load(f'./data/logs/csv_to_json', '.json')
     d = csv.transform(transformation='scale',
                       column_names=['amt', 'unix_time'])
     print(d.describe())
@@ -598,7 +737,7 @@ def test():
     d = csv.transform(transformation='add_noise',
                       column_names=['amt', 'unix_time'])
     print(d.describe())
-    csv.describe(csv.get_dataset(), f'{testDir}csvLogs')
+    csv.describe(csv.get_dataset(), f'./data/logs/csvLogs')
 
 
 if __name__ == '__main__':

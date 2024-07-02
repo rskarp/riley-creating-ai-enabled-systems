@@ -5,6 +5,9 @@ import json
 
 from data_engineering import DataEngineering
 
+import os
+from sklearn.datasets import make_classification
+
 
 class Dataset():
     """
@@ -21,9 +24,11 @@ class Dataset():
             List of filenames of source data from whcih self.dataset is constructed.
         transformations : List[str]
             The transformations that have been run on the dataset.
+        format : str
+            The file format to use when saving data.
     """
 
-    def __init__(self, raw_data):
+    def __init__(self, raw_data: Union[str, pd.DataFrame] = None, format: str = 'parquet'):
         """
         Initialize the instance of the Dataset class.
 
@@ -31,16 +36,73 @@ class Dataset():
         ----------
         raw_data : Union[str, pd.DataFrame]
             The Dataframe or filename containing the data.
+        format : str
+            The file format to use when saving data.
 
         Returns
         -------
         None
         """
         self.version = ''
+        self.format = format
         self.data_sources = []
         self.data_source_names = []
-        self.dataset = self.extract_data(raw_data)
+        self.dataset = pd.DataFrame() if raw_data is None else self.extract_data(raw_data)
         self.transformations = []
+
+    # Deployment
+
+    def generate_dataset(self, version, n_samples: int = 1000, sampling_type: str = 'stratified', random_state: int = 1) -> Dict:
+        '''
+        Generate a new dataset sampled from self.dataset.
+
+        Parameters:
+        version: str
+            The version name to save the data to.
+        n_samples: int (Optional. Default 1000)
+            The number of samples (if random) or sampels per class (if stratified) to be sampled.
+        sampling_type: str (Optional. Default 'stratified')
+            The sampling method to use: random or stratified.
+        random_state: int (Optional. Default 1)
+            The random_state value to use for reproducibility.
+
+        Returns:
+        Dict:
+            Description of the dataset.
+        '''
+        sampled_data = self.sample(sampling_method=sampling_type, N=n_samples, stratification_factors=[
+                                   'is_fraud'], seed=random_state)
+
+        self.deployment_load(version, sampled_data)
+        description = self.describe(dataframe=sampled_data, version=version)
+        description['random_state'] = random_state
+        description['n_classes'] = 2
+        return description
+
+    def deployment_load(self, dataset_version: str, dataset_df: pd.DataFrame):
+        """
+        Load the dataset based on the specified version and file format.
+
+        Parameters:
+        dataset_version : str
+            The version of dataset to load.
+        dataset_df : DataFrame
+            The data to load to the given version.
+
+        Returns:
+        pd.DataFrame:
+            The loaded dataset.
+        """
+
+        os.makedirs('resources/datasets', exist_ok=True)
+        file_path = f"resources/datasets/{dataset_version}.{self.format}"
+
+        if self.format == 'csv':
+            return dataset_df.to_csv(file_path, index=False)
+        elif self.format == 'parquet':
+            return dataset_df.to_parquet(file_path, engine='pyarrow')
+        elif self.format == 'json':
+            return dataset_df.to_json(file_path, orient='records', lines=True)
 
     # Extract and Load
 
@@ -91,7 +153,7 @@ class Dataset():
 
         return self.dataset
 
-    def load(self, output_filename: str, format: str = None) -> str:
+    def load(self, output_filename: str, format: str = None, add_version: bool = True) -> str:
         """
         Write self.dataset to file.
 
@@ -101,6 +163,8 @@ class Dataset():
             The path and filename where the dataset will be written to.
         format : string (optional)
             The format of the output file (accept: .csv, .json, .parquet).
+        add_version : bool (Optional. Default True)
+            Boolean flag indicating whether to append self.version to filename.
 
         Returns
         -------
@@ -110,7 +174,8 @@ class Dataset():
         # Get filetype
         fileType = format.split('.')[-1].lower()
         # Create full output filename
-        fullFilename = f'{output_filename}_v{self.version}.{fileType}'
+        version = f'_v{self.version}' if add_version else ''
+        fullFilename = f'{output_filename}{version}.{fileType}'
         # Save file based on format
         if fileType == 'csv':
             self.dataset.to_csv(fullFilename, index=False)
@@ -321,7 +386,7 @@ class Dataset():
         """
         return ((~dataframe.isna()).sum(axis=1)/dataframe.shape[1]).mean()
 
-    def describe(self, dataframe: pd.DataFrame, output_file: str = None) -> Dict:
+    def describe(self, dataframe: pd.DataFrame, output_file: str = None, version: str = None) -> Dict:
         """
         Generate description of the dataset and measurements assessing the quality/integrity of the dataset.
 
@@ -331,6 +396,8 @@ class Dataset():
             The data to describe.
         output_file : str (Optional)
             The path and filename where the description will be written to.
+        version : str (Optional)
+            The version name of the dataset.
 
         Returns
         -------
@@ -346,16 +413,16 @@ class Dataset():
             date_ranges = []
 
         info = {
-            'description': {
-                'version': self.version,
-                'data sources': self.data_source_names,
-                'column names': list(dataframe.columns),
-                'date ranges': date_ranges,
-                'num data sources': len(self.data_sources),
-                'transformations': self.transformations
-            },
+            'version': version if version is not None else self.version,
+            'data_sources': self.data_source_names,
+            'column_names': list(dataframe.columns),
+            'column_types': dataframe.dtypes.apply(lambda x: x.name).to_dict(),
+            'date_ranges': date_ranges,
+            'num_data_sources': len(self.data_sources),
+            'transformations': self.transformations,
             'measures': {
                 'num_samples': dataframe.shape[0],
+                'num_columns': dataframe.shape[1],
                 'mean_time_since_transaction': f'{self._get_mean_time_since_transaction(dataframe)} days',
                 'table_completeness': self._get_table_completness(dataframe),
                 'mean_col_completness': self._get_mean_col_completness(dataframe),
