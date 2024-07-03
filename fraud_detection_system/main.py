@@ -1,7 +1,7 @@
 import json
 import datetime
 from flask import Flask, request, jsonify
-from deployment import DeploymentPipeline
+from deployment import DeploymentPipeline, Endpoint
 
 app = Flask(__name__)
 
@@ -23,8 +23,10 @@ def generate_new_dataset():
     Route to generate a new dataset.
 
     URL Params:
-    dataset_version : str
+    version : str
         The version name to save the data to.
+    type : str (Optional. Default 'train')
+        The type of datset to create: train or test.
     n_samples : int (Optional. Default 1000)
         The number of samples (if random) or samples per class (if stratified) to be sampled.
     sampling_type : str (Optional. Default 'stratified')
@@ -37,7 +39,9 @@ def generate_new_dataset():
     Returns:
     JSON response with a success message and description.
     """
+    pipeline.track_endpoint_usage(Endpoint.generate_new_dataset)
     dataset_version = request.args.get('version')
+    dataset_type = request.args.get('type', 'train').lower()
     n_samples = int(request.args.get('n_samples', 1000))
     sampling_type = request.args.get('sampling_type', 'stratified')
     random_state = int(request.args.get('random_state', 1))
@@ -46,8 +50,10 @@ def generate_new_dataset():
 
     if not dataset_version:
         return jsonify({"error": "No version specified"}), 400
+    if dataset_type not in ['train', 'test']:
+        return jsonify({"error": "'type' parameter must have value 'train' or 'test'."}), 400
     description = pipeline.generate_new_dataset(
-        dataset_version, n_samples, sampling_type, random_state)
+        dataset_version, dataset_type, n_samples, sampling_type, random_state)
     pipeline.log(
         'datasets',
         log_entry={
@@ -91,6 +97,7 @@ def generate_new_features():
     Returns:
     JSON response with a success message and description.
     """
+    pipeline.track_endpoint_usage(Endpoint.generate_new_features)
     dataset_version = request.args.get('version')
     run_smote = request.args.get('run_smote', '').lower() == 'true'
     random_state = int(request.args.get('random_state', 1))
@@ -122,6 +129,7 @@ def get_dataset_description():
     Returns:
     JSON response with the dataset description.
     """
+    pipeline.track_endpoint_usage(Endpoint.dataset_description)
     dataset_version = request.args.get('version')
     if not dataset_version:
         return jsonify({"error": "No version specified"}), 400
@@ -144,6 +152,7 @@ def get_dataset_features_description():
     Returns:
     JSON response with the dataset features description.
     """
+    pipeline.track_endpoint_usage(Endpoint.dataset_features_description)
     dataset_version = request.args.get('version')
     if not dataset_version:
         return jsonify({"error": "No version specified"}), 400
@@ -166,6 +175,7 @@ def get_model_description():
     Returns:
     JSON response with the model description.
     """
+    pipeline.track_endpoint_usage(Endpoint.model_description)
     model_version = request.args.get('version')
     if not model_version:
         return jsonify({"error": "No version specified"}), 400
@@ -185,6 +195,7 @@ def get_dataset_list():
     Returns:
     JSON response with the datasets list.
     """
+    pipeline.track_endpoint_usage(Endpoint.dataset_list)
     datasets = pipeline.get_resource_list('datasets')
 
     return jsonify({"datasets": datasets}), 200
@@ -198,6 +209,7 @@ def get_feature_list():
     Returns:
     JSON response with the features list.
     """
+    pipeline.track_endpoint_usage(Endpoint.feature_list)
     features = pipeline.get_resource_list('features')
 
     return jsonify({"features": features}), 200
@@ -211,6 +223,7 @@ def get_model_list():
     Returns:
     JSON response with the models list.
     """
+    pipeline.track_endpoint_usage(Endpoint.model_list)
     datasets = pipeline.get_resource_list('models')
 
     return jsonify({"models": datasets}), 200
@@ -228,6 +241,7 @@ def get_model_metrics():
     Returns:
     JSON response with the model metrics.
     """
+    pipeline.track_endpoint_usage(Endpoint.model_metrics)
     timestamp = datetime.datetime.now()
     dataset_version = request.args.get('dataset_version')
     model_version = request.args.get('model_version')
@@ -238,7 +252,7 @@ def get_model_metrics():
         return jsonify({"error": "No model_version specified"}), 400
 
     metrics = pipeline.get_model_metrics(
-        dataset_version, model_version, random_state)
+        model_version, dataset_version, random_state)
     pipeline.log(
         'metrics',
         log_entry={
@@ -268,6 +282,7 @@ def predict():
     Returns:
     JSON response with the prediction result.
     """
+    pipeline.track_endpoint_usage(Endpoint.predict)
     timestamp = datetime.datetime.now()
     model_version = request.args.get('version')
     random_state = int(request.args.get('random_state', 1))
@@ -314,6 +329,7 @@ def train():
     Returns:
     JSON response with the model description.
     """
+    pipeline.track_endpoint_usage(Endpoint.train)
     timestamp = datetime.datetime.now()
     dataset_version = request.args.get('dataset_version')
     model_version = request.args.get('model_version')
@@ -346,6 +362,20 @@ def train():
     )
 
     return jsonify({"description": description}), 200
+
+
+@app.route('/system_metrics', methods=['GET'])
+def get_system_metrics():
+    """
+    Route to get the metrics of endpoint usage of the system.
+
+    Returns:
+    JSON response with the system endpoint usgae.
+    """
+    pipeline.track_endpoint_usage(Endpoint.system_metrics)
+    system_metrics = pipeline.get_system_metrics()
+
+    return jsonify({"metrics": system_metrics}), 200
 
 
 if __name__ == '__main__':

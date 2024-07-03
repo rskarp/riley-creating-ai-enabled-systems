@@ -1,3 +1,4 @@
+import datetime
 import json
 import os
 from typing import Dict, List, Union
@@ -7,6 +8,11 @@ from data_engineering import DataEngineering
 from feature_engineering import FeatureEngineering
 from model import Model
 from metrics import Metrics
+from enum import Enum
+
+Endpoint = Enum('Endpoint', ['generate_new_dataset', 'generate_new_features', 'dataset_description', 'dataset_features_description',
+                             'model_description', 'dataset_list', 'feature_list', 'model_list', 'model_metrics',
+                             'predict', 'train', 'system_metrics'])
 
 
 class DeploymentPipeline:
@@ -24,6 +30,7 @@ class DeploymentPipeline:
         self.dataset_test = self.get_test_source()
         self.metrics = None
         self.model = Model()
+        self.endpoint_usage = {}
         self.allCols = [
             "Index",
             "trans_date_trans_time",
@@ -50,6 +57,31 @@ class DeploymentPipeline:
             "is_fraud"
         ]
         print('Pipeline initilaized')
+
+    def track_endpoint_usage(self, endpoint: Endpoint):
+        '''
+        Keep track of how many times each endpoint is called for system monitoring.
+
+        Parameters:
+        endpoint (Endpoint) : the endpoint that was called.
+
+        Returns:
+        None
+        '''
+        self.endpoint_usage[endpoint.name] = self.endpoint_usage.get(
+            endpoint.name, 0) + 1
+
+    def get_system_metrics(self) -> Dict:
+        '''
+        Get the metrics of endpoint usage of the system.
+
+        Parameters:
+        None
+
+        Returns:
+        Dict : the metrics of how many times each endpoint has been called since system start up.
+        '''
+        return self.endpoint_usage
 
     def clean_raw_data(self, data: Union[str, pd.DataFrame], predict: bool = False) -> Dataset:
         '''
@@ -124,7 +156,7 @@ class DeploymentPipeline:
         # Use 3rd raw dataset as test data
         return self.clean_raw_data('./data/transactions_2.json')
 
-    def _prepare_dataset_for_model_inference(self, model_version: str, data: pd.DataFrame, random_state: int = 1, predict: bool = False) -> pd.DataFrame:
+    def _prepare_dataset_for_model_inference(self, model_version: str, data: pd.DataFrame, random_state: int = 1, predict: bool = False, model_info: Dict = None) -> pd.DataFrame:
         '''
         Extract features from given data using transformation steps used to train the given model version.
 
@@ -133,12 +165,14 @@ class DeploymentPipeline:
         data (DataFrame): The raw data to be cleaned, transformed, and features extracted.
         random_state (int, Optional. Default = 1): The random_state value to use for reproducibility.
         predict (bool, Optional. Default = False): Boolean indicating whether the data is to be predicted (therefore is unlabeled)
+        model_info (Dict, Optional. Default = None): Model information used to find stats used for training the model.
 
         Returns:
         DataFrame: the features extracted from the dataset.
         '''
         # Get name of training dataset from model log
-        model_log = self.get_log('models', model_version)
+        model_log = model_info if model_info is not None else self.get_log(
+            'models', model_version)
         features_log = self.get_log(
             'features', model_log['description']['train_dataset'])
         # Get training data column stats from dataset features log, so we can use them for test data transformation
@@ -206,13 +240,15 @@ class DeploymentPipeline:
             raise ValueError(f"Error decoding JSON from log file: {log_path}")
         return description
 
-    def generate_new_dataset(self, dataset_version: str, n_samples: int = 1000, sampling_type: str = 'stratified', random_state: int = 1) -> Dict:
+    def generate_new_dataset(self, dataset_version: str, dataset_type: str, n_samples: int = 1000, sampling_type: str = 'stratified', random_state: int = 1) -> Dict:
         '''
         Generate a new dataset sampled from the training set.
 
         Parameters:
         dataset_version : str
             The version name to save the data to.
+        dataset_type : str
+            The type of datset to create: train or test.
         n_samples : int (Optional. Default 1000)
             The number of samples (if random) or samples per class (if stratified) to be sampled.
         sampling_type : str (Optional. Default 'stratified')
@@ -224,7 +260,10 @@ class DeploymentPipeline:
         Dict:
             Description of the dataset.
         '''
-        return self.dataset_train.generate_dataset(dataset_version, n_samples, sampling_type, random_state)
+        if dataset_type == 'train':
+            return self.dataset_train.generate_dataset(dataset_version, n_samples, sampling_type, random_state)
+        elif dataset_type == 'test':
+            return self.dataset_test.generate_dataset(dataset_version, n_samples, sampling_type, random_state)
 
     def generate_new_features(self, dataset_version: str, run_smote: bool = False, random_state: int = 1) -> Dict:
         '''
@@ -269,9 +308,9 @@ class DeploymentPipeline:
         description = self.model.train(
             model_version, model_type, dataset_version, hyperparameters, random_state)
         data = pd.read_parquet(
-            f'resource/datasets/{dataset_version}.parquet', engine='pyarrow')
+            f'resources/datasets/{dataset_version}.parquet', engine='pyarrow')
         features = self._prepare_dataset_for_model_inference(
-            model_version, data, random_state)
+            model_version, data, random_state, model_info={'description': description})
         metrics = Metrics(features, model_version)
         description['train_metrics'] = metrics.run_metrics()
         return description
@@ -289,7 +328,7 @@ class DeploymentPipeline:
         Dict: Dictionary containing the model metrics.
         """
         data = pd.read_parquet(
-            f'resource/datasets/{dataset_version}.parquet', engine='pyarrow')
+            f'resources/datasets/{dataset_version}.parquet', engine='pyarrow')
         features = self._prepare_dataset_for_model_inference(
             model_version, data, random_state)
         metrics = Metrics(features, model_version)
@@ -310,7 +349,7 @@ class DeploymentPipeline:
         if resourceType == 'datasets':
             path = 'resources/datasets'
         elif resourceType == 'models':
-            path = 'models'
+            path = 'resources/models'
         elif resourceType == 'features':
             path = 'resources/features'
         return [''.join(f.split('.')[:-1]) for f in os.listdir(path)]

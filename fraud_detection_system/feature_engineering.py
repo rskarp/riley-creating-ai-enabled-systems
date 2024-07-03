@@ -49,6 +49,7 @@ class FeatureEngineering():
         self.data_sources = []
         self.data_source_names = []
         self.dataset = self.extract_data(raw_data)
+        self.labels = self.dataset.loc[:, 'is_fraud']
         # Initialize the list of transformations that have been run on the dataset
         self.transformations = []
         # Initialize dictionary of categorical feature scores
@@ -61,7 +62,7 @@ class FeatureEngineering():
         self.datetime_cols = ['dob', 'trans_date_trans_time', 'unix_time']
         self.continuous_cols = ['amt', 'lat', 'long', 'city_pop', 'merch_lat', 'merch_long', 'dob',
                                 'trans_date_trans_time', 'unix_time', 'year_trans_date_trans_time', 'year_dob']
-        self.categorical_cols = ['is_fraud', 'category', 'cc_num', 'merchant', 'first', 'last', 'sex', 'street', 'city', 'zip', 'job', 'month_trans_date_trans_time',
+        self.categorical_cols = ['category', 'cc_num', 'merchant', 'first', 'last', 'sex', 'street', 'city', 'zip', 'job', 'month_trans_date_trans_time',
                                  'state', 'day_of_week_trans_date_trans_time', 'hour_of_day_trans_date_trans_time', 'month_dob', 'day_of_week_dob', 'hour_of_day_dob']
 
     # Deployment
@@ -128,9 +129,11 @@ class FeatureEngineering():
         # Filter features to only include the best features
         self.transform(transformation='filter_columns',
                        column_names=[*categorical_data.columns,
-                                     *numeric_data.columns, 'is_fraud'],
+                                     *numeric_data.columns],
                        inplace=True)
 
+        # Add labels back in after transformations
+        self.dataset['is_fraud'] = self.labels
         # Save features to file
         format = 'parquet'
         os.makedirs('resources/features', exist_ok=True)
@@ -178,8 +181,10 @@ class FeatureEngineering():
             transformation='add_noise', column_names=self.continuous_cols, inplace=True, seed=random_state)
         # Filter features to only include the best features
         self.transform(transformation='filter_columns',
-                       column_names=[*filter_cols, 'is_fraud'],
+                       column_names=filter_cols,
                        inplace=True)
+        # Add labels back in after transformations
+        self.dataset['is_fraud'] = self.labels
         return self.get_dataset()
 
     # Extract and Load
