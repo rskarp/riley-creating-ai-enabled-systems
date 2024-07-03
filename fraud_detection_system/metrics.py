@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, fbeta_score
 
 from model import Model
 
@@ -73,6 +73,15 @@ class Metrics:
         """
         return f1_score(self.y_true, self.predicted_labels)
 
+    def f2(self):
+        """
+        Calculate the F2 score of the model.
+
+        Returns:
+        float: The F2 score.
+        """
+        return fbeta_score(self.y_true, self.predicted_labels, beta=2)
+
     def run_metrics(self):
         """
         Calculate all the metrics: accuracy, precision, recall, and F1 score.
@@ -84,5 +93,6 @@ class Metrics:
             'accuracy': self.accuracy(),
             'precision': self.precision(),
             'recall': self.recall(),
-            'f1_score': self.f1()
+            'f1_score': self.f1(),
+            'f2_score': self.f2(),
         }

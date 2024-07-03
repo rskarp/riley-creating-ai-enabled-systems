@@ -317,7 +317,7 @@ def train():
     model_version : str
         The name of the model version for this model.
     model_type : str
-        The type of model to train: random_forest, stocahstic_gradient_descent, or logistic_regression.
+        The type of model to train: random_forest, stochastic_gradient_descent, or logistic_regression.
     dataset_version : str
         The dataset to use for training data.
     random_state : int (Optoinal. Default 1)

@@ -215,6 +215,9 @@ class DeploymentPipeline:
             model_version, df, random_state, True)
         # Remove label column for prediction
         features = features.loc[:, features.columns != 'is_fraud']
+        if features.shape[0] < 1:
+            raise ValueError(
+                'Data must have all required features (cc_num, amt, trans_num).')
         # Predict using the model
         prediction = self.model.predict(features)
         return prediction
