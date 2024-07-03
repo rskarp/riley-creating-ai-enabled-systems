@@ -139,9 +139,7 @@ class DataEngineering():
             'is_fraud': -1,
         }
         # Fill in missing values using the default values defined above
-        with pd.option_context("future.no_silent_downcasting", True):
-            self.dataset.fillna(
-                value=values, inplace=True)
+        self.dataset.fillna(value=values, inplace=True)
         # Specify column types (this ensure strings and categories are typed correctly instead of 'object')
         self.dataset['merchant'] = self.dataset['merchant'].astype('string')
         self.dataset['category'] = self.dataset['category'].str.lower().astype(
