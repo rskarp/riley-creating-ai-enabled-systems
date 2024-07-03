@@ -1,5 +1,6 @@
 # Byte-compiled / optimized / DLL files
-__pycache__/
+*/__pycache__/*
+*/resources/*
 *.py[cod]
 *$py.class
 .DS_store
@@ -9,4 +10,7 @@ __pycache__/
 .env
 
 # My own test data to test individual functions
-fraud_detection_system/data/my_tests/*
+fraud_detection_system/data/*
+
+# Keep data placehodler text file
+!fraud_detection_system/data/put_data_here.txt

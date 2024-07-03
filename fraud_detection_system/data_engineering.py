@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Union
 import pandas as pd
 import sys
 import json
@@ -16,21 +16,21 @@ class DataEngineering():
             The transformations that have been run on the dataset.
     """
 
-    def __init__(self, filename: str):
+    def __init__(self, data: Union[str, pd.DataFrame]):
         """
         Initialize the instance of the DataEngineering class.
 
         Parameters
         ----------
-        filename : string
-            The name of the csv or parquet file of transaction data to be read.
+        data : Union[str, pd.DataFrame]
+            The Dataframe or filename containing the data.
 
         Returns
         -------
         None
         """
         # Initialize the dataset Load the dataset
-        self.dataset = self.load_dataset(filename)
+        self.dataset = self.load_dataset(data)
         # Rename the index column (this is specifically for transactions_0.csv from Assignment 2, and may be edited or removed later)
         self.dataset.rename(columns={'Unnamed: 0': 'Index'}, inplace=True)
         # Initialize the list of transformations that have been run on the dataset
@@ -38,30 +38,35 @@ class DataEngineering():
 
     # 1. Data Extraction & Summary
 
-    def load_dataset(self, filename: str) -> pd.DataFrame:
+    def load_dataset(self, data: Union[str, pd.DataFrame]) -> pd.DataFrame:
         """
-        Load the data from the given file.
+        Read data from either a file (.csv, .json, or .parquet) or a pandas.DataFrame.
 
         Parameters
         ----------
-        filename : string
-            The name of the CSV, json, or parquet file of transaction data to be read.
+        data : Union[str, pd.DataFrame]
+            The DataFrame or filename containing the data to be read.
 
         Returns
         -------
-        dataframe
-            The data read from the given filename.
+        DataFrame
+            The dataset containing the newly read data.
         """
-        fileType = filename.split('.')[-1].lower()
-        if fileType == 'csv':
-            return pd.read_csv(filename)
-        elif fileType == 'parquet':
-            return pd.read_parquet(filename, 'pyarrow')
-        elif fileType == 'json':
-            return pd.read_json(filename)
+
+        # Get new data as DataFrame
+        if isinstance(data, pd.DataFrame):
+            return data.copy(deep=True)
         else:
-            raise ValueError(
-                'File must be of type .csv, .json, or .parquet')
+            fileType = data.split('.')[-1].lower()
+            if fileType == 'csv':
+                return pd.read_csv(data)
+            elif fileType == 'parquet':
+                return pd.read_parquet(data, 'pyarrow')
+            elif fileType == 'json':
+                return pd.read_json(data)
+            else:
+                raise ValueError(
+                    'File must be of type .csv, .json, or .parquet')
 
     def describe(self, N: int) -> Dict:
         """
@@ -149,6 +154,9 @@ class DataEngineering():
         self.dataset['job'] = self.dataset['job'].astype('string')
         self.dataset['trans_num'] = self.dataset['trans_num'].astype('string')
         self.dataset['is_fraud'] = self.dataset['is_fraud'].astype('int64')
+        self.dataset['amt'] = self.dataset['amt'].astype('float64')
+        self.dataset['unix_time'] = self.dataset['unix_time'].astype(
+            'datetime64[ns]')
         # Convert credit card number to string (to avoid int overflow for long card numbers)
         self.dataset['cc_num'] = self.dataset['cc_num'].astype('string')
         # Track that this transformation occurred

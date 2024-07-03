@@ -1,0 +1,373 @@
+{
+	"info": {
+		"_postman_id": "5068d53b-b91f-4933-b686-4e865ab74995",
+		"name": "EN.705.603.82 Case Study 5",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "22457696"
+	},
+	"item": [
+		{
+			"name": "GET /",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/generate_new_dataset w/ features",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/generate_new_dataset?version=train1&n_samples=1500",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"generate_new_dataset"
+					],
+					"query": [
+						{
+							"key": "version",
+							"value": "train1"
+						},
+						{
+							"key": "n_samples",
+							"value": "1500"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/generate_new_dataset w/o features",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/generate_new_dataset?version=train2&generate_features=false",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"generate_new_dataset"
+					],
+					"query": [
+						{
+							"key": "version",
+							"value": "train2"
+						},
+						{
+							"key": "generate_features",
+							"value": "false"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/generate_new_dataset w/ test data",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/generate_new_dataset?version=test1&type=test",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"generate_new_dataset"
+					],
+					"query": [
+						{
+							"key": "version",
+							"value": "test1"
+						},
+						{
+							"key": "type",
+							"value": "test"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/generate_new_features",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/generate_new_features?version=train2",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"generate_new_features"
+					],
+					"query": [
+						{
+							"key": "version",
+							"value": "train2"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/dataset_description",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/dataset_description?version=train1",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"dataset_description"
+					],
+					"query": [
+						{
+							"key": "version",
+							"value": "train1"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/dataset_features_description",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/dataset_features_description?version=train2",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"dataset_features_description"
+					],
+					"query": [
+						{
+							"key": "version",
+							"value": "train2"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/dataset_list",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/dataset_list",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"dataset_list"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/feature_list",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/feature_list",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"feature_list"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/train",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"n_estimators\": [75, 100],\n    \"min_samples_split\": [2, 5]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/train?dataset_version=train1&model_version=model1&model_type=random_forest",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"train"
+					],
+					"query": [
+						{
+							"key": "dataset_version",
+							"value": "train1"
+						},
+						{
+							"key": "model_version",
+							"value": "model1"
+						},
+						{
+							"key": "model_type",
+							"value": "random_forest"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/model_list",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/model_list",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"model_list"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/predict",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"trans_date_trans_time\": \"2024-07-01 01:10:03\",\n    \"cc_num\": 12345678910111213,\n    \"merchant\": \"Bombas\",\n    \"category\": \"shopping_pos\",\n    \"amt\": 999.99,\n    \"trans_num\": \"3a7f9b28d5ec4e6c9f1d23a0b8c7e4f5\",\n    \"unix_time\": 1719792603\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/predict?version=model1",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"predict"
+					],
+					"query": [
+						{
+							"key": "version",
+							"value": "model1"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/model_metrics",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/model_metrics?dataset_version=test1&model_version=model1",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"model_metrics"
+					],
+					"query": [
+						{
+							"key": "dataset_version",
+							"value": "test1"
+						},
+						{
+							"key": "model_version",
+							"value": "model1"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/system_metrics",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/system_metrics",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"system_metrics"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://127.0.0.1:8000",
+			"type": "string"
+		}
+	]
+}
