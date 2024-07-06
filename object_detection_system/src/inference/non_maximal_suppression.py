@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 
+
 class NMS:
     def __init__(self, score_threshold, nms_iou_threshold):
         self.score_threshold = score_threshold
@@ -20,7 +21,8 @@ class NMS:
         list of tuples: The filtered list of bounding boxes, confidence scores, and class IDs after applying NMS.
         """
         class_ids, scores, bboxes = outputs
-        indices = cv2.dnn.NMSBoxes(bboxes, scores, self.score_threshold, self.nms_iou_threshold)
+        indices = cv2.dnn.NMSBoxes(
+            bboxes, scores, self.score_threshold, self.nms_iou_threshold)
         class_ids = [class_ids[i] for i in indices]
         bboxes = [bboxes[i] for i in indices]
         scores = [scores[i] for i in indices]
@@ -35,13 +37,13 @@ if __name__ == "__main__":
     cfg_path = "yolo_resources/yolov4-tiny-logistics_size_416_1.cfg"
     weights_path = "yolo_resources/models/yolov4-tiny-logistics_size_416_1.weights"
     names_path = "yolo_resources/logistics.names"
-    score_threshold=.5
+    score_threshold = .5
 
     yolo_detector = YOLOObjectDetector(cfg_path, weights_path, names_path)
 
     iou_threshold = .4
-    
-    nms = NMS(score_threshold,iou_threshold)
+
+    nms = NMS(score_threshold, iou_threshold)
     frame = cv2.imread("yolo_resources/test_images/test_images.jpg")
 
     output = yolo_detector.predict(frame)

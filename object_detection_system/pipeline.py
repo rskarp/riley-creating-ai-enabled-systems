@@ -10,12 +10,12 @@ from src.inference import video_processing
 
 
 class InferenceService:
-    def __init__(self, stream, detector, nms):
+    def __init__(self, stream: video_processing.VideoProcessing, detector: object_detection.YOLOObjectDetector, nms: non_maximal_suppression.NMS):
         self.stream = stream
         self.detector = detector
         self.nms = nms
 
-    def _save(self, frame, filename, objects):
+    def _save(self, frame, filename, detections):
         path = 'storages/prediction'
         file = f'{path}/{filename}'
         # Create folder if it doesn't exist
@@ -23,12 +23,28 @@ class InferenceService:
         # Save image
         cv2.imwrite(f'{file}.jpg', frame)
         # Save objects
+        objects = []
+        # Format detections into YOLO format
+        frameHeight, frameWidth = frame.shape[:2]
+        for class_id, confidence, box in zip(*detections):
+            x, y, w, h = box
+            x_center = x+w/2
+            y_center = y+h/2
+            objects.append(
+                f'{class_id} {x_center/frameWidth} {y_center/frameHeight} {w/frameWidth} {h/frameHeight}')
         with open(f'{file}.txt', "w") as objs:
             objs.write('\n'.join(objects))
 
     def detect(self):
-        # TODO: Implement this method for your Module 5 Assignment
-        pass
+        ctr = 0
+        for frame in self.stream.capture_udp_stream():
+            resized = self.stream.resize_image(frame)
+            output = self.detector.predict(resized)
+            detections = self.detector.process_output(output)
+            filteredDetections = nms.filter(detections)
+            self._save(frame, f'frame_{ctr}', filteredDetections)
+            ctr += 1
+            yield filteredDetections
 
 
 if __name__ == "__main__":
