@@ -9,8 +9,9 @@
 .venv
 .env
 
-# My own test data to test individual functions
+# Data
 fraud_detection_system/data/*
+object_detection_system/logistics/*
 
 # Keep data placehodler text file
 !fraud_detection_system/data/put_data_here.txt
