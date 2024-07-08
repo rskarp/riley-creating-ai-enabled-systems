@@ -11,34 +11,6 @@ class VideoProcessing:
         self.stream_capture = cv2.VideoCapture(udp_url, cv2.CAP_FFMPEG)
         self.skip_every_frame = skip_every_frame
         self.output_size = output_size
-        # self.scale_stats = self.get_scale_stats()
-        # print(self.scale_stats)
-
-    def get_scale_stats(self):
-        trainImgs = [
-            f'logistics/{f}' for f in os.listdir('logistics') if f[-4:] == '.jpg']
-        trainImgs = random.sample(trainImgs, 100)
-        img = cv2.imread(trainImgs[0])
-        h, w = img.shape[:2]
-        rgbs = np.zeros((h*len(trainImgs), w, 3))
-        for i in range(len(trainImgs)):
-            if i % 100 == 0:
-                print(f'{i}/{len(trainImgs)}')
-            img = cv2.imread(trainImgs[i])
-            rgbs[i*h:i*h+h, :, :] = img
-        print('calculating stats')
-        rgbs = np.reshape(rgbs, (h*w*len(trainImgs), 3))
-        print(rgbs.shape)
-        print(np.mean(rgbs, axis=0))
-        print(np.std(rgbs, axis=0))
-        stats = {
-            'means': np.mean(rgbs, axis=0),
-            'stds': np.std(rgbs, axis=0),
-            'mins': np.min(rgbs, axis=0),
-            'maxs': np.max(rgbs, axis=0)
-        }
-        print(stats)
-        return stats
 
     def resize_image(self, image):
         height, width, _ = image.shape
@@ -49,33 +21,7 @@ class VideoProcessing:
     def scale_image(self, frame):
         # TODO: implement this function to scale the image
         # (i.e. pixel-wise normalize and standardize per color channel).
-        h, w = frame.shape[:2]
-        # Calculate RGB stats
-
-        scaled = frame.copy()
-        # for i in range(3):
-        #     channel = scaled[:, :, i]
-        #     mean = np.mean(channel)
-        #     std = np.std(channel)
-        #     channel = (channel-mean)/std
-        #     max = np.max(channel)
-        #     min = np.min(channel)
-        #     scaled[:, :, i] = (channel-min)/(max-min)
-
-        rs = scaled.reshape(h*w, 3)
-
-        # # Standardize = X-mean/std
-        rs = (rs-self.scale_stats['means'])/self.scale_stats['stds']
-        # Normalize = X-Xmin / Xmax-Xmin
-        self.scale_stats['mins'] = np.min(rs, axis=0)
-        self.scale_stats['maxs'] = np.max(rs, axis=0)
-        rs = (rs-np.min(rs, axis=0)) / \
-            (self.scale_stats['maxs']-self.scale_stats['mins'])
-        print(
-            f'standardized mean: {np.mean(scaled.reshape(h*w,3),axis=0)}, std: {np.std(scaled.reshape(h*w,3),axis=0)}')
-
-        return rs.reshape(h, w, 3)
-        # return scaled
+        pass
 
     def capture_udp_stream(self):
         """
