@@ -19,9 +19,17 @@ class VideoProcessing:
         return image
 
     def scale_image(self, frame):
-        # TODO: implement this function to scale the image
         # (i.e. pixel-wise normalize and standardize per color channel).
-        pass
+        scaled = frame.copy()
+        for i in range(3):
+            channel = scaled[:, :, i]
+            mean = np.mean(channel)
+            std = np.std(channel)
+            channel = (channel-mean)/std
+            max = np.max(channel)
+            min = np.min(channel)
+            scaled[:, :, i] = (channel-min)/(max-min)
+        return scaled
 
     def capture_udp_stream(self):
         """
@@ -63,9 +71,4 @@ if __name__ == "__main__":
     udp_url = 'udp://127.0.0.1:23000'  # Replace with your UDP stream URL
     stream = VideoProcessing(udp_url)
     for frame in stream.capture_udp_stream():
-        print(f'original: {frame.shape}')
-        r = stream.resize_image(frame)
-        print(f'resize: {r.shape}')
-        s = stream.scale_image(r)
-        print(f'scale: {s.shape}')
-        cv2.imshow('UDP Stream', s)
+        cv2.imshow('UDP Stream', frame)
