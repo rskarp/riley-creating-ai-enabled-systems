@@ -1,6 +1,6 @@
 # Fraud Detection System
 
-This project contains all of the code components necessary to run a fraud detection (classification) system and access it using a Flask REST API. This project also contains documentation regarding the system requirements and system design choices made throughoutthe project. Running the server will create a `resources` directory which will store logs and dataset files.
+This project contains all of the code components necessary to run a fraud detection (classification) system and access it using a Flask REST API. This project also contains documentation regarding the system requirements and system design choices made throughout the project. Running the server will create a `resources` directory which will store logs and dataset files.
 
 # Prerequisites
 
