@@ -7,6 +7,8 @@ import numpy as np
 from src.inference import object_detection
 from src.inference import non_maximal_suppression
 from src.inference import video_processing
+from src.rectification import hard_negative_mining
+import src.metrics as metrics
 
 
 class InferenceService:
@@ -51,17 +53,26 @@ if __name__ == "__main__":
     cfg_path = "yolo_resources/yolov4-tiny-logistics_size_416_1.cfg"
     weights_path = "yolo_resources/models/yolov4-tiny-logistics_size_416_1.weights"
     names_path = "yolo_resources/logistics.names"
-    detector = object_detection.YOLOObjectDetector(
-        cfg_path, weights_path, names_path)
 
     score_threshold = .5
     iou_threshold = .4
+
+    detector = object_detection.YOLOObjectDetector(
+        cfg_path, weights_path, names_path)
+
     nms = non_maximal_suppression.NMS(score_threshold, iou_threshold)
 
-    video_source = 'udp://127.0.0.1:23000'
-    stream = video_processing.VideoProcessing(video_source)
+    # video_source = 'udp://127.0.0.1:23000'
+    # stream = video_processing.VideoProcessing(video_source)
+    # pipeline = InferenceService(stream, detector, nms)
 
-    pipeline = InferenceService(stream, detector, nms)
+    # for detections in pipeline.detect():
+    #     print(detections)
 
-    for detections in pipeline.detect():
-        print(detections)
+    dataset_dir = 'storages/training'
+    num_hard_negatives = 5
+    loss_parameters = {'num_classes': 20,
+                       'lambda_coord': 5., 'lambda_noobj': 1.}
+    miner = hard_negative_mining.HardNegativeMiner(
+        model=detector, nms=nms, measure=metrics.Loss(**loss_parameters), dataset_dir=dataset_dir)
+    print(miner.sample_hard_negatives(num_hard_negatives, criteria='total_loss'))

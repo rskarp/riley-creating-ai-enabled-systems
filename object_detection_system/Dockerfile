@@ -13,7 +13,7 @@ COPY . /app
 RUN pip install -r requirements.txt
 
 # Make port 23000 available to the world outside this container
-EXPOSE 23000
+EXPOSE 23000 8000
 
 # Run app.py when the container launches
 CMD ["python", "pipeline.py"]

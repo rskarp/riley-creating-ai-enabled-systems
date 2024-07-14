@@ -3,7 +3,26 @@ import numpy as np
 
 
 class YOLOObjectDetector:
+    """
+    A class to perform object detection using YOLO (You Only Look Once).
+
+    Attributes:
+        cfg_path (str): Path to the YOLO configuration file.
+        weights_path (str): Path to the YOLO weights file.
+        names_path (str): Path to the file containing class names.
+        frame_size (int): Size to which each frame is resized. Default is 416.
+    """
+
     def __init__(self, cfg_path, weights_path, names_path, frame_size=416):
+        """
+        Initialize the YOLOObjectDetector with configuration, weights, and class names.
+
+        Args:
+            cfg_path (str): Path to the YOLO configuration file.
+            weights_path (str): Path to the YOLO weights file.
+            names_path (str): Path to the file containing class names.
+            frame_size (int): Size to which each frame is resized. Default is 416.
+        """
         self.cfg_path = cfg_path
         self.weights_path = weights_path
         self.names_path = names_path
@@ -22,6 +41,15 @@ class YOLOObjectDetector:
         print("Successfully loaded model...")
 
     def predict(self, frame):
+        """
+        Predict the objects in a given frame using the YOLO model.
+
+        Args:
+            frame (ndarray): The input image frame.
+
+        Returns:
+            list: The output from the YOLO model after forwarding the blob.
+        """
         self.height, self.width = frame.shape[:2]
 
         frame = cv2.resize(frame, (416, 416))
@@ -35,6 +63,15 @@ class YOLOObjectDetector:
         return outs
 
     def process_output(self, output):
+        """
+        Process the output from the YOLO model to extract class IDs, confidences, and bounding boxes.
+
+        Args:
+            output (list): The output from the YOLO model.
+
+        Returns:
+            tuple: Lists of class IDs, confidences, and bounding boxes.
+        """
         class_ids = []
         confidences = []
         boxes = []
@@ -53,14 +90,21 @@ class YOLOObjectDetector:
                     y = int(center_y - h / 2)
                     boxes.append([x, y, w, h])
                     confidences.append(float(confidence))
-                    class_ids.append(self.classes[class_id])
+                    class_ids.append(class_id)
 
         return class_ids, confidences, boxes
 
     def draw_labels(self, frame, detections):
+        """
+        Draw bounding boxes and labels on the image frame.
+
+        Args:
+            frame (ndarray): The input image frame.
+            detections (tuple): The detections including class IDs, confidences, and bounding boxes.
+        """
         for class_id, confidence, box in zip(*detections):
             x, y, w, h = box
-            label = f"{class_id}: {confidence:.2f}"
+            label = f"{self.classes[class_id]}: {confidence:.2f}"
             color = (0, 255, 0)
             cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
             cv2.putText(frame, label, (x, y - 10),
@@ -68,8 +112,8 @@ class YOLOObjectDetector:
 
         # Display the frame
         cv2.imshow("Frame", frame)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        if cv2.waitKey(0) & 0xFF == ord('q'):
+            cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
@@ -78,6 +122,7 @@ if __name__ == "__main__":
     names_path = "yolo_resources/logistics.names"
 
     yolo_detector = YOLOObjectDetector(cfg_path, weights_path, names_path)
+    # frame = cv2.imread("storages/training/znak0241-_jpg.rf.e42a126be0dcbafdc79bb9cfb5df5a1d.jpg")
     frame = cv2.imread("yolo_resources/test_images/test_images.jpg")
 
     output = yolo_detector.predict(frame)
