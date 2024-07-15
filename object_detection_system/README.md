@@ -62,7 +62,7 @@ Here are step-by-step instructions to run the inference module with Docker:
    Run the Docker container with the built image:
 
    ```sh
-   docker run -it --rm -p 23000:23000/udp object_detection_system
+   docker run -it --rm -p 23000:23000/udp -p 8000:8000 object_detection_system
    ```
 
 4. **Stream video to port 23000:**

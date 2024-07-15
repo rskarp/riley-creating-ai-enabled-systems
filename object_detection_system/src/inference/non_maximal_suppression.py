@@ -43,9 +43,9 @@ class NMS:
 
         indices = cv2.dnn.NMSBoxes(
             bboxes, scores, self.score_threshold, self.nms_iou_threshold)
-        class_ids = [class_ids[i[0]] for i in indices]
-        bboxes = [bboxes[i[0]] for i in indices]
-        scores = [scores[i[0]] for i in indices]
+        class_ids = [class_ids[i] for i in indices]
+        bboxes = [bboxes[i] for i in indices]
+        scores = [scores[i] for i in indices]
 
         if for_evaluation:
             class_scores = [class_scores[i[0]] for i in indices]

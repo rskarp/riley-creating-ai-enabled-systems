@@ -62,7 +62,8 @@ class Loss:
         gt_box = np.array([anns[1:] for anns in annotations])
         gt_class_id = np.array([anns[0] for anns in annotations])
 
-        ious = Metrics.calculate_ious(np.vstack([gt_box, pred_box]))[
+        boxes = np.vstack([gt_box, pred_box]) if len(gt_box) > 0 else pred_box
+        ious = Metrics.calculate_ious(boxes)[
             :len(annotations), len(annotations):]
 
         obj_masks = ious > self.iou_threshold
