@@ -48,7 +48,7 @@ class NMS:
         scores = [scores[i] for i in indices]
 
         if for_evaluation:
-            class_scores = [class_scores[i[0]] for i in indices]
+            class_scores = [class_scores[i] for i in indices]
             return class_ids, scores, bboxes, class_scores
         else:
             return class_ids, scores, bboxes

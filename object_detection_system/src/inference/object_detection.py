@@ -62,19 +62,22 @@ class YOLOObjectDetector:
 
         return outs
 
-    def process_output(self, output):
+    def process_output(self, output, for_evaluation=False):
         """
         Process the output from the YOLO model to extract class IDs, confidences, and bounding boxes.
 
         Args:
             output (list): The output from the YOLO model.
+            for_evaluation (bool, optional): If True, includes class scores in the output. Defaults to False.
+
 
         Returns:
-            tuple: Lists of class IDs, confidences, and bounding boxes.
+            tuple: Lists of class IDs, confidences, and bounding boxes (and class_scores if for_evaluation=True).
         """
         class_ids = []
         confidences = []
         boxes = []
+        class_scores = []
 
         for out in output:
             for detection in out:
@@ -91,8 +94,12 @@ class YOLOObjectDetector:
                     boxes.append([x, y, w, h])
                     confidences.append(float(confidence))
                     class_ids.append(class_id)
+                    class_scores.append(scores)
 
-        return class_ids, confidences, boxes
+        if for_evaluation:
+            return class_ids, confidences, boxes, class_scores
+        else:
+            return class_ids, confidences, boxes
 
     def draw_labels(self, frame, detections, show_image=True):
         """
