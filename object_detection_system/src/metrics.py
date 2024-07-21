@@ -155,6 +155,9 @@ class Metrics:
             numpy array: A NumPy matrix where the element at [i][j] is the IoU between boxes[i] and boxes[j].
         """
 
+        # This is here because during my experimentation while working on desing_considerations.ipynb,
+        #   I plotted the predicted and annotated bounding boxes on the images and discovered that they
+        #   are actually provided in this format.
         if coco_format:
             x1 = boxes[:, 0]
             x2 = boxes[:, 0] + boxes[:, 2]
