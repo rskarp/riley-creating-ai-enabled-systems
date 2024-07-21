@@ -1,3 +1,4 @@
+from typing import List
 import numpy as np
 from sklearn.preprocessing import label_binarize
 import matplotlib.pyplot as plt
@@ -158,7 +159,7 @@ class Metrics:
             x1 = boxes[:, 0]
             x2 = boxes[:, 0] + boxes[:, 2]
             y1 = boxes[:, 1]
-            y2 = boxes[:, 1] + boxes[:, 2]
+            y2 = boxes[:, 1] + boxes[:, 3]
         else:
             x1 = boxes[:, 0]
             y1 = boxes[:, 1]
@@ -202,87 +203,6 @@ class Metrics:
         return annotations
 
     @staticmethod
-    def calculate(image_files, annotation_files, imageSize, iou_threshold, num_classes, detector, nms):
-        """
-        Compute the precision, recall, thresholds, and mean avergae precision (mAP).
-
-        Args:
-            predictions (list): List of predictions.
-            annotations (list): List of ground truth annotations.
-
-        Returns:
-            dict: Dictionary containing the computed precision, recall, thresholds, and mAP.
-        """
-        allFiles = list(zip(image_files, annotation_files))
-        pred_scores = []
-        gt_class_ids = []
-        for image_file, annotation_file in allFiles:
-            image = cv2.imread(image_file)
-            # Read annotations from file
-            annotations = []
-            with open(annotation_file, 'r') as f:
-                for line in f:
-                    parts = line.strip().split()
-                    class_label = int(parts[0])
-                    bbox = list(map(float, parts[1:]))
-                    annotations.append((class_label, *bbox))
-            # Predict
-            if image.shape[0] != imageSize and image.shape[1] != imageSize:
-                image = cv2.resize(image, (imageSize, imageSize))
-            predictions = detector.predict(image)
-            detections = detector.process_output(predictions, True)
-            filteredDetections = nms.filter(detections, True)
-
-            h, w, _ = image.shape
-
-            gt_box = np.array([anns[1:] for anns in annotations])
-
-            gt_box = np.vstack([w*(gt_box[:, 0] - gt_box[:, 2]/2), h*(gt_box[:, 1] - gt_box[:, 2]/2),
-                                w*gt_box[:, 2],  h*gt_box[:, 2]]).astype(int).T
-            gt_class_id = np.array([anns[0] for anns in annotations])
-
-            pred_box = np.array(filteredDetections[2])
-            pred_score = np.array(filteredDetections[3])
-
-            boxes = np.vstack([gt_box, pred_box]) if len(
-                pred_box) > 0 else gt_box
-            ious = Metrics.calculate_ious(boxes, True)
-
-            ious = ious[:len(annotations), len(annotations):]
-
-            obj_masks = ious > iou_threshold
-            rowMask = np.any(obj_masks, axis=0)
-
-            match_scores = pred_score[rowMask]
-            match_ids = gt_class_id
-
-            if match_scores.shape[0] < 1:
-                continue
-
-            if len(pred_scores) == 0:
-                pred_scores = match_scores
-                gt_class_ids = match_ids
-            else:
-                pred_scores = np.vstack([pred_scores, match_scores])
-                gt_class_ids = np.hstack([gt_class_ids, match_ids])
-
-        precision, recall, thresholds = Metrics.calculate_precision_recall_curve(
-            gt_class_ids, pred_scores, num_classes)
-
-        precision_recall_points = {
-            i: list(zip(recall[i], precision[i])) for i in range(num_classes)} if len(recall) > 0 else {}
-
-        map_value = Metrics.calculate_map_11_point_interpolated(
-            precision_recall_points, num_classes)
-
-        return {
-            'precision': precision,
-            'recall': recall,
-            'thresholds': thresholds,
-            'map': map_value
-        }
-
-    @staticmethod
     def get_matches(detections, annotations, iou_threshold, height, width):
         """
         Compute the precision, recall, thresholds, and mean avergae precision (mAP).
@@ -290,6 +210,7 @@ class Metrics:
         Args:
             detections (list): List of detected objects.
             annotations (list): List of ground truth annotations.
+            iou_threshold (float): The threshold to use when calculationg IOUs.
             height (int): Image frame height.
             width (int): Image frame width.
 

@@ -106,7 +106,7 @@ class HardNegativeMiner:
         Args:
             num_hard_negatives (int): The number of hard negatives to sample.
             criteria (str): The criteria to sort and sample the hard negatives.
-            sample_size (int, optional): The number of files to randomly sample and use as the dataset to sample from.
+            sample_size (int, optional): The number of files to randomly sample from.
 
         Returns:
             DataFrame: A DataFrame containing the sampled hard negative examples.

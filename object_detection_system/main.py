@@ -69,7 +69,7 @@ def get_predictions():
     end_frame(int): Ending index of frame range.
 
     Returns:
-    JSON response with a list of detections.
+    zip file containing the detection images and annotations.
     """
     start_frame = int(request.args.get('start_frame', -1))
     end_frame = int(request.args.get('end_frame', -1))

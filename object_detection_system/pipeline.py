@@ -12,12 +12,37 @@ import src.metrics as metrics
 
 
 class InferenceService:
+    """
+    A class to perform inference on frames from a video stream using an object detection model.
+
+    Attributes:
+        stream: The VideoProcessing object for the UDP stream.
+        detector: The YOLOObjectDetector model used for inference.
+        nms: The NMS object used for performing non-maximal supression.
+    """
+
     def __init__(self, stream: video_processing.VideoProcessing, detector: object_detection.YOLOObjectDetector, nms: non_maximal_suppression.NMS):
+        """
+        Initialize the InferenceService object with the given components.
+
+        Args:
+            stream: The VideoProcessing object for the UDP stream.
+            detector: The YOLOObjectDetector model used for inference.
+            nms: The NMS object used for performing non-maximal supression.
+        """
         self.stream = stream
         self.detector = detector
         self.nms = nms
 
     def _save(self, frame, filename, detections):
+        '''
+        Saves detections in a frame to image (jpg) file and annotations to txt file.
+
+        Args:
+            frame (ndarray): the image frame to save.
+            filename (string): the output base filename.
+            detections (List): the list of detections identified in the frame.
+        '''
         path = 'storages/prediction'
         file = f'{path}/{filename}'
         # Create folder if it doesn't exist
@@ -39,6 +64,9 @@ class InferenceService:
             objs.write('\n'.join(objects))
 
     def detect(self):
+        '''
+        Detects objects in a UDP video stream and saves image and annotation results to files.
+        '''
         for frame, frameNum in self.stream.capture_udp_stream():
             resized = self.stream.resize_image(frame)
             output = self.detector.predict(resized)
