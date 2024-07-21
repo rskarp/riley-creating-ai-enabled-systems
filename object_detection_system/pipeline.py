@@ -12,18 +12,44 @@ import src.metrics as metrics
 
 
 class InferenceService:
+    """
+    A class to perform inference on frames from a video stream using an object detection model.
+
+    Attributes:
+        stream: The VideoProcessing object for the UDP stream.
+        detector: The YOLOObjectDetector model used for inference.
+        nms: The NMS object used for performing non-maximal supression.
+    """
+
     def __init__(self, stream: video_processing.VideoProcessing, detector: object_detection.YOLOObjectDetector, nms: non_maximal_suppression.NMS):
+        """
+        Initialize the InferenceService object with the given components.
+
+        Args:
+            stream: The VideoProcessing object for the UDP stream.
+            detector: The YOLOObjectDetector model used for inference.
+            nms: The NMS object used for performing non-maximal supression.
+        """
         self.stream = stream
         self.detector = detector
         self.nms = nms
 
     def _save(self, frame, filename, detections):
+        '''
+        Saves detections in a frame to image (jpg) file and annotations to txt file.
+
+        Args:
+            frame (ndarray): the image frame to save.
+            filename (string): the output base filename.
+            detections (List): the list of detections identified in the frame.
+        '''
         path = 'storages/prediction'
         file = f'{path}/{filename}'
         # Create folder if it doesn't exist
         os.makedirs(path, exist_ok=True)
-        # Save image
-        cv2.imwrite(f'{file}.jpg', frame)
+        # Save image with labels
+        labeledImage = self.detector.draw_labels(frame, detections, False)
+        cv2.imwrite(f'{file}.jpg', labeledImage)
         # Save objects
         objects = []
         # Format detections into YOLO format
@@ -38,14 +64,15 @@ class InferenceService:
             objs.write('\n'.join(objects))
 
     def detect(self):
-        ctr = 0
-        for frame in self.stream.capture_udp_stream():
+        '''
+        Detects objects in a UDP video stream and saves image and annotation results to files.
+        '''
+        for frame, frameNum in self.stream.capture_udp_stream():
             resized = self.stream.resize_image(frame)
             output = self.detector.predict(resized)
             detections = self.detector.process_output(output)
-            filteredDetections = nms.filter(detections)
-            self._save(frame, f'frame_{ctr}', filteredDetections)
-            ctr += 1
+            filteredDetections = self.nms.filter(detections)
+            self._save(resized, f'frame_{frameNum}', filteredDetections)
             yield filteredDetections
 
 
@@ -62,14 +89,14 @@ if __name__ == "__main__":
 
     nms = non_maximal_suppression.NMS(score_threshold, iou_threshold)
 
+    # Get detections from video stream
     # video_source = 'udp://127.0.0.1:23000'
     # stream = video_processing.VideoProcessing(video_source)
     # pipeline = InferenceService(stream, detector, nms)
-
     # for detections in pipeline.detect():
     #     print(detections)
 
-    dataset_dir = 'storages/training'
+    dataset_dir = 'storages/prediction'
     num_hard_negatives = 5
     loss_parameters = {'num_classes': 20,
                        'lambda_coord': 5., 'lambda_noobj': 1.}

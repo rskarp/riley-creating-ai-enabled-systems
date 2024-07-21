@@ -16,4 +16,4 @@ RUN pip install -r requirements.txt
 EXPOSE 23000 8000
 
 # Run app.py when the container launches
-CMD ["python", "pipeline.py"]
+CMD ["python", "main.py"]

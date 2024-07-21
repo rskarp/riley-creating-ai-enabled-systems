@@ -82,7 +82,7 @@ class VideoProcessing:
 
             # Only process every nth frame
             if frame_count % self.skip_every_frame == 0:
-                yield frame
+                yield frame, frame_count
 
             # Increment frame counter
             frame_count += 1
@@ -97,5 +97,5 @@ class VideoProcessing:
 if __name__ == "__main__":
     udp_url = 'udp://127.0.0.1:23000'  # Replace with your UDP stream URL
     stream = VideoProcessing(udp_url)
-    for frame in stream.capture_udp_stream():
+    for frame, _ in stream.capture_udp_stream():
         cv2.imshow('UDP Stream', frame)

@@ -62,19 +62,22 @@ class YOLOObjectDetector:
 
         return outs
 
-    def process_output(self, output):
+    def process_output(self, output, for_evaluation=False):
         """
         Process the output from the YOLO model to extract class IDs, confidences, and bounding boxes.
 
         Args:
             output (list): The output from the YOLO model.
+            for_evaluation (bool, optional): If True, includes class scores in the output. Defaults to False.
+
 
         Returns:
-            tuple: Lists of class IDs, confidences, and bounding boxes.
+            tuple: Lists of class IDs, confidences, and bounding boxes (and class_scores if for_evaluation=True).
         """
         class_ids = []
         confidences = []
         boxes = []
+        class_scores = []
 
         for out in output:
             for detection in out:
@@ -91,16 +94,21 @@ class YOLOObjectDetector:
                     boxes.append([x, y, w, h])
                     confidences.append(float(confidence))
                     class_ids.append(class_id)
+                    class_scores.append(scores)
 
-        return class_ids, confidences, boxes
+        if for_evaluation:
+            return class_ids, confidences, boxes, class_scores
+        else:
+            return class_ids, confidences, boxes
 
-    def draw_labels(self, frame, detections):
+    def draw_labels(self, frame, detections, show_image=True):
         """
         Draw bounding boxes and labels on the image frame.
 
         Args:
             frame (ndarray): The input image frame.
             detections (tuple): The detections including class IDs, confidences, and bounding boxes.
+            show_image (boolean, default=True): Indicates whether to display the image. If false, return image. 
         """
         for class_id, confidence, box in zip(*detections):
             x, y, w, h = box
@@ -111,9 +119,13 @@ class YOLOObjectDetector:
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
         # Display the frame
-        cv2.imshow("Frame", frame)
-        if cv2.waitKey(0) & 0xFF == ord('q'):
-            cv2.destroyAllWindows()
+        if show_image:
+            cv2.imshow("Frame", frame)
+            if cv2.waitKey(0) & 0xFF == ord('q'):
+                cv2.destroyAllWindows()
+        else:
+            # Return frame with the labels
+            return frame
 
 
 if __name__ == "__main__":
@@ -122,8 +134,9 @@ if __name__ == "__main__":
     names_path = "yolo_resources/logistics.names"
 
     yolo_detector = YOLOObjectDetector(cfg_path, weights_path, names_path)
-    # frame = cv2.imread("storages/training/znak0241-_jpg.rf.e42a126be0dcbafdc79bb9cfb5df5a1d.jpg")
-    frame = cv2.imread("yolo_resources/test_images/test_images.jpg")
+    frame = cv2.imread(
+        "storages/training/znak0241-_jpg.rf.e42a126be0dcbafdc79bb9cfb5df5a1d.jpg")
+    # frame = cv2.imread("yolo_resources/test_images/test_images.jpg")
 
     output = yolo_detector.predict(frame)
     output = yolo_detector.process_output(output)

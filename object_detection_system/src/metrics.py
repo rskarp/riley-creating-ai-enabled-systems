@@ -1,7 +1,9 @@
+from typing import List
 import numpy as np
 from sklearn.preprocessing import label_binarize
 import matplotlib.pyplot as plt
 import itertools
+import cv2
 
 
 class Loss:
@@ -62,7 +64,8 @@ class Loss:
         gt_box = np.array([anns[1:] for anns in annotations])
         gt_class_id = np.array([anns[0] for anns in annotations])
 
-        ious = Metrics.calculate_ious(np.vstack([gt_box, pred_box]))[
+        boxes = np.vstack([gt_box, pred_box]) if len(gt_box) > 0 else pred_box
+        ious = Metrics.calculate_ious(boxes)[
             :len(annotations), len(annotations):]
 
         obj_masks = ious > self.iou_threshold
@@ -139,7 +142,7 @@ class Metrics:
     """
 
     @staticmethod
-    def calculate_ious(boxes):
+    def calculate_ious(boxes, coco_format=False):
         """
         Compute the Intersection over Union (IoU) of each pair of bounding boxes using vectorized operations.
 
@@ -151,10 +154,20 @@ class Metrics:
         Returns:
             numpy array: A NumPy matrix where the element at [i][j] is the IoU between boxes[i] and boxes[j].
         """
-        x1 = boxes[:, 0]
-        y1 = boxes[:, 1]
-        x2 = boxes[:, 2]
-        y2 = boxes[:, 3]
+
+        # This is here because during my experimentation while working on desing_considerations.ipynb,
+        #   I plotted the predicted and annotated bounding boxes on the images and discovered that they
+        #   are actually provided in this format.
+        if coco_format:
+            x1 = boxes[:, 0]
+            x2 = boxes[:, 0] + boxes[:, 2]
+            y1 = boxes[:, 1]
+            y2 = boxes[:, 1] + boxes[:, 3]
+        else:
+            x1 = boxes[:, 0]
+            y1 = boxes[:, 1]
+            x2 = boxes[:, 2]
+            y2 = boxes[:, 3]
 
         area = (x2 - x1 + 1) * (y2 - y1 + 1)
 
@@ -193,6 +206,73 @@ class Metrics:
         return annotations
 
     @staticmethod
+    def get_matches(detections, annotations, iou_threshold, height, width):
+        """
+        Compute the precision, recall, thresholds, and mean avergae precision (mAP).
+
+        Args:
+            detections (list): List of detected objects.
+            annotations (list): List of ground truth annotations.
+            iou_threshold (float): The threshold to use when calculationg IOUs.
+            height (int): Image frame height.
+            width (int): Image frame width.
+
+        Returns:
+            tuple (list,list): List containing the true class ids and prediction scores for detections that match ground truth objects.
+        """
+        # Get ground truth bounding boxes
+        gt_box = np.array([anns[1:] for anns in annotations])
+        # Convert bounding boxes into same format as detections
+        gt_box = np.vstack([width*(gt_box[:, 0] - gt_box[:, 2]/2), height*(gt_box[:, 1] - gt_box[:, 2]/2),
+                            width*gt_box[:, 2],  height*gt_box[:, 2]]).astype(int).T
+        gt_class_id = np.array([anns[0] for anns in annotations])
+        # Get prediction scores and boxes
+        pred_box = np.array(detections[2])
+        pred_score = np.array(detections[3])
+        # Combine ground truth and predicted boxes into one array
+        boxes = np.vstack([gt_box, pred_box]) if len(
+            pred_box) > 0 else gt_box
+        # Get IOU between predicted and true objects
+        ious = Metrics.calculate_ious(boxes, True)
+        ious = ious[:len(annotations), len(annotations):]
+        # Apply IOU threshold
+        obj_masks = ious > iou_threshold
+        rowMask = np.any(obj_masks, axis=0)
+        # Determine matched objects based on IOU threshold
+        match_scores = pred_score[rowMask]
+        match_ids = gt_class_id
+        return match_ids, match_scores
+
+    @staticmethod
+    def calculate_metrics(gt_class_ids, pred_scores, num_classes):
+        """
+        Compute the precision, recall, thresholds, and mean avergae precision (mAP).
+
+        Args:
+            gt_class_ids (list): List of ground truth class ids.
+            pred_scores (list): List of prediction scores for each detection.
+            num_classes (int): Number of object classes in the data.
+
+        Returns:
+            dict: Dictionary containing the computed precision, recall, thresholds, and mAP.
+        """
+        precision, recall, thresholds = Metrics.calculate_precision_recall_curve(
+            gt_class_ids, pred_scores, num_classes)
+
+        precision_recall_points = {
+            i: list(zip(recall[i], precision[i])) for i in range(num_classes)} if len(recall) > 0 else {}
+
+        map_value = Metrics.calculate_map_11_point_interpolated(
+            precision_recall_points, num_classes)
+
+        return {
+            'precision': precision,
+            'recall': recall,
+            'thresholds': thresholds,
+            'map': map_value
+        }
+
+    @staticmethod
     def calculate_precision_recall_curve(y_true, scores, num_classes):
         """
         Calculate the precision-recall curve for multi-class tasks.
@@ -207,15 +287,26 @@ class Metrics:
             tuple: Precision values for each class, recall values for each class, and
                    decreasing thresholds on the decision function used to compute precision and recall for each class.
         """
-        y_true_bin = label_binarize(y_true, classes=np.arange(num_classes))
+
         precision = {}
         recall = {}
         thresholds = {}
 
+        if len(scores) == 0 or scores.shape[0] == 0:
+            return precision, recall, thresholds
+
+        y_true_bin = label_binarize(y_true, classes=np.arange(num_classes))
+
         for i in range(num_classes):
-            sorted_indices = np.argsort(scores[:, i])[::-1]
-            sorted_scores = scores[:, i][sorted_indices]
-            sorted_true = y_true_bin[:, i][sorted_indices]
+            class_scores = scores[:, i] if len(
+                scores.shape) > 1 and scores.shape[1] > 1 else scores
+            class_y_true_bin = y_true_bin[:,
+                                          i] if len(y_true_bin.shape) > 1 and y_true_bin.shape[1] > 1 else y_true_bin
+            sorted_indices = np.argsort(scores[:, i])[
+                ::-1] if len(scores.shape) > 1 and scores.shape[1] > 1 else np.argsort(class_scores)[::-1]
+            sorted_scores = class_scores[sorted_indices]
+            sorted_true = [class_y_true_bin[idx] if len(
+                class_y_true_bin) > idx else 0 for idx in sorted_indices]
 
             # Append an extra threshold to cover all cases
             thresholds[i] = np.append(sorted_scores, [0], axis=0)
@@ -259,6 +350,9 @@ class Metrics:
             float: The mAP value.
         """
         mean_average_precisions = []
+
+        if len(precision_recall_points) == 0:
+            return 0.
 
         for i in range(num_classes):
             points = precision_recall_points[i]

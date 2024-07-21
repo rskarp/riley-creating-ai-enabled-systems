@@ -11,7 +11,6 @@
 
 # Data
 fraud_detection_system/data/*
-object_detection_system/logistics/*
 object_detection_system/storages/*
 
 # Keep data placehodler text file

@@ -2,6 +2,7 @@ import os
 from glob import glob
 import numpy as np
 import cv2
+import random
 import pandas as pd
 
 
@@ -66,16 +67,25 @@ class HardNegativeMiner:
         output = self.model.predict(image)
         return output
 
-    def __construct_table(self):
+    def __construct_table(self, sample_size=None):
         """
         Construct a table with image files, annotation files, and measures.
 
         This method reads images and annotations, makes predictions,
         computes measures, and appends the results to the table.
+
+        Args:
+            sample_size (int, optional): The number of files to randomly sample and use as the dataset to sample from.
         """
-        for image_file, annotation_file in zip(
-                sorted(glob(os.path.join(self.dataset_dir, "*.jpg"))),
-                sorted(glob(os.path.join(self.dataset_dir, "*.txt")))):
+        allFiles = list(zip(
+            sorted(glob(os.path.join(self.dataset_dir, "*.jpg"))),
+            sorted(glob(os.path.join(self.dataset_dir, "*.txt")))))
+        if sample_size != None:
+            sampleSet = random.sample(
+                allFiles, np.min([sample_size, len(allFiles)]))
+        else:
+            sampleSet = allFiles
+        for image_file, annotation_file in sampleSet:
 
             image = cv2.imread(image_file)
             annotation = self.__read_annotations(annotation_file)
@@ -83,23 +93,25 @@ class HardNegativeMiner:
 
             measures = self.measure.compute(prediction, annotation)
 
-            self.table = self.table.append(
-                {'annotation_file': annotation_file,
-                    'image_file': image_file, **measures},
-                ignore_index=True
-            )
+            self.table = pd.concat([self.table,
+                                    pd.DataFrame([{'annotation_file': annotation_file,
+                                                   'image_file': image_file, **measures}])],
+                                   ignore_index=True
+                                   )
 
-    def sample_hard_negatives(self, num_hard_negatives, criteria):
+    def sample_hard_negatives(self, num_hard_negatives, criteria, sample_size=None):
         """
         Sample hard negative examples based on the specified criteria.
 
         Args:
             num_hard_negatives (int): The number of hard negatives to sample.
             criteria (str): The criteria to sort and sample the hard negatives.
+            sample_size (int, optional): The number of files to randomly sample from.
 
         Returns:
             DataFrame: A DataFrame containing the sampled hard negative examples.
         """
-        self.__construct_table()
-        self.table.sort_values(by=criteria, inplace=True, ascending=False)
+        self.__construct_table(sample_size)
+        self.table.sort_values(by=criteria, inplace=True,
+                               ascending=False, ignore_index=True)
         return self.table.head(num_hard_negatives)
