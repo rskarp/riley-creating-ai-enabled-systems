@@ -52,11 +52,12 @@ class KDTree:
         Returns:
             Node: The root node of the KDTree.
         """
-        if not points:
+        if points is None or len(points) < 1:
             return None
 
         axis = depth % self.k
-        points_with_metadata = list(zip(points, metadata_list)) if metadata_list else [(p, {}) for p in points]
+        points_with_metadata = list(zip(points, metadata_list)) if metadata_list else [
+            (p, {}) for p in points]
         points_with_metadata.sort(key=lambda x: x[0][axis])
         median = len(points_with_metadata) // 2
 
@@ -151,12 +152,14 @@ class KDTree:
                 min_node = self._find_min(root.right, axis, depth + 1)
                 root.point = min_node.point
                 root.metadata = min_node.metadata
-                root.right = self._delete_node(root.right, min_node.point, depth + 1)
+                root.right = self._delete_node(
+                    root.right, min_node.point, depth + 1)
             elif root.left is not None:
                 min_node = self._find_min(root.left, axis, depth + 1)
                 root.point = min_node.point
                 root.metadata = min_node.metadata
-                root.right = self._delete_node(root.left, min_node.point, depth + 1)
+                root.right = self._delete_node(
+                    root.left, min_node.point, depth + 1)
                 root.left = None
             else:
                 return None
@@ -187,9 +190,11 @@ class KDTree:
             return
 
         if by:
-            print(" " * depth * 2 + prefix + f" {by}: " + str(node.metadata[by]))
+            print(" " * depth * 2 + prefix +
+                  f" {by}: " + str(node.metadata[by]))
         else:
-            print(" " * depth * 2 + prefix + str(node.point) + " Metadata: " + str(node.metadata))
+            print(" " * depth * 2 + prefix + str(node.point) +
+                  " Metadata: " + str(node.metadata))
         if node.left:
             self._print_tree(node.left, depth + 1, prefix="L--- ", by=by)
         if node.right:
@@ -223,7 +228,8 @@ if __name__ == "__main__":
     kd_tree.print_tree(by="name")
 
     # Adding a point with metadata
-    print("\nAfter adding [3, 6] with metadata {'image_id': 7, 'name': 'Grace'}:")
+    print(
+        "\nAfter adding [3, 6] with metadata {'image_id': 7, 'name': 'Grace'}:")
     kd_tree.insert([3, 6], metadata={"image_id": 7, "name": "Grace"})
     kd_tree.print_tree(by="name")
 
