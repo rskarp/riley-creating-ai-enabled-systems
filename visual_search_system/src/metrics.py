@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class RankingMetrics:
     def __init__(self, k):
         self.k = k
@@ -75,7 +76,8 @@ if __name__ == "__main__":
     metrics = RankingMetrics(k=k)
 
     precision = [metrics.precision_at_k(r) for r in relevance_ranks]
-    recall = [metrics.recall_at_k(r, all_pos) for r, all_pos in zip(relevance_ranks, all_positives)]
+    recall = [metrics.recall_at_k(r, all_pos) for r, all_pos in zip(
+        relevance_ranks, all_positives)]
     ap = [metrics.average_precision_at_k(r) for r in relevance_ranks]
     mrr = metrics.mean_reciprocal_rank_at_k(relevance_ranks)
 

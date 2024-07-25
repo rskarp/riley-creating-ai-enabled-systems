@@ -27,7 +27,7 @@ class Pipeline:
     def __predict(self, probe):
         # TODO: IMPLEMENT THIS...
         pass
-        
+
     def __precompute(self):
         # TODO: IMPLEMENT THIS...
         pass
@@ -39,21 +39,21 @@ class Pipeline:
     def search_gallery(self, probe):
         # TODO: IMPLEMENT THIS...
         pass
-    
+
 
 if __name__ == "__main__":
     image_size = 224
     architecture = 'resnet_034'
 
     preprocessing = Preprocessing(image_size=image_size)
-    model = Model(f"simclr_resources/model_size_{image_size:03}_{architecture}.pth")
+    model = Model(
+        f"simclr_resources/model_size_{image_size:03}_{architecture}.pth")
     index = KDTree(k=256)
     search_euclidean = KDTreeSearch(index, Measure.euclidean)
     pipeline = Pipeline(preprocessing=preprocessing,
                         model=model,
                         index=index,
-                        search = search_euclidean
+                        search=search_euclidean
                         )
 
     pipeline.precompute()
-

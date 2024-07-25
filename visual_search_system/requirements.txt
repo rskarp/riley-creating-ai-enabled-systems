@@ -1,6 +1,8 @@
 Flask
 matplotlib
-numpy<2
-opencv-python==4.7.0.68
+numpy
 pandas
 scikit-learn
+torch
+torchaudio
+torchvision

@@ -12,17 +12,9 @@ from torch import nn
 from torchvision import models
 
 warnings.simplefilter("ignore")
+torchDevice = torch.device(
+    'mps') if torch.backends.mps.is_available() else torch.device('cpu')
 
-class Model:
-
-    def __init__(self, model_path):
-        self.model = SimCLR()
-        self.model.load_state_dict(torch.load(model_path))
-        self.model.eval()
-
-
-    def predict(self, image):
-        return self.model(image.unsqueeze(0))[0].detach().numpy()
 
 class Identity(nn.Module):
     """
@@ -118,9 +110,9 @@ class SimCLR(nn.Module):
         super().__init__()
 
         # Configure base model
-        if architecture  == "resnet_018":
+        if architecture == "resnet_018":
             self.encoder = models.resnet18(pretrained=True)
-        elif architecture  == "resnet_034":
+        elif architecture == "resnet_034":
             self.encoder = models.resnet34(pretrained=True)
         self.encoder.maxpool = Identity()
         self.encoder.fc = Identity()
@@ -130,11 +122,15 @@ class SimCLR(nn.Module):
             p.requires_grad = True
 
         self.projector = ProjectionHead(512, 256, 256)
+        self.encoder.to(torchDevice)
+        self.projector.to(torchDevice)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = x.to(torchDevice)
         out = self.encoder(x)
         out = self.projector(out)
         return out
+
 
 class Model:
 
@@ -142,17 +138,19 @@ class Model:
 
         architecture = re.search("resnet_[0-9]*", model_path).group(0)
         self.model = SimCLR(architecture=architecture)
-        self.model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
-        self.model.eval(); 
 
+        self.model.load_state_dict(torch.load(
+            model_path, map_location=torchDevice))
+
+        self.model.eval()
 
     def extract(self, image):
-        return self.model(image.unsqueeze(0))[0].detach().numpy()
-
+        return self.model(image.unsqueeze(0))[0].detach().cpu().numpy()
 
 
 if __name__ == "__main__":
     from preprocess import Preprocessing
+    print(torchDevice)
 
     image_size = 224
     architecture = 'resnet_034'
@@ -162,6 +160,7 @@ if __name__ == "__main__":
     probe = Image.open(image_path)
     probe = preprocessing.process(probe)
 
-    model = Model(f"simclr_resources/model_size_{image_size:03}_{architecture}.pth")
+    model = Model(
+        f"simclr_resources/model_size_{image_size:03}_{architecture}.pth")
 
     print(model.extract(probe).shape)

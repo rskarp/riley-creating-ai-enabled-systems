@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class KDTreeSearch:
     """
     Performs nearest neighbor search on a KD-tree.
@@ -51,13 +52,17 @@ class KDTreeSearch:
             neighbors.sort(reverse=True, key=lambda x: x[0])
 
         if point[cd] < root.point[cd]:
-            neighbors = self.nearest_neighbors(root.left, point, k, depth + 1, neighbors)
+            neighbors = self.nearest_neighbors(
+                root.left, point, k, depth + 1, neighbors)
             if len(neighbors) < k or abs(point[cd] - root.point[cd]) < neighbors[0][0]:
-                neighbors = self.nearest_neighbors(root.right, point, k, depth + 1, neighbors)
+                neighbors = self.nearest_neighbors(
+                    root.right, point, k, depth + 1, neighbors)
         else:
-            neighbors = self.nearest_neighbors(root.right, point, k, depth + 1, neighbors)
+            neighbors = self.nearest_neighbors(
+                root.right, point, k, depth + 1, neighbors)
             if len(neighbors) < k or abs(point[cd] - root.point[cd]) < neighbors[0][0]:
-                neighbors = self.nearest_neighbors(root.left, point, k, depth + 1, neighbors)
+                neighbors = self.nearest_neighbors(
+                    root.left, point, k, depth + 1, neighbors)
 
         return neighbors
 
@@ -167,8 +172,7 @@ if __name__ == "__main__":
         {"image_id": 6, "value": "Frank"}
     ]
 
-    kd_tree = KDTree(k=2, points=points, metadata_list=points)
-    kd_tree.print_tree()
+    kd_tree = KDTree(k=2, points=points, metadata_list=metadata_list)
 
     print("KD-Tree after insertion:")
     kd_tree.print_tree()
@@ -178,28 +182,34 @@ if __name__ == "__main__":
     query_point = [10, 10]
     k = 2
     nearest_neighbors = search_euclidean.find_nearest_neighbors(query_point, k)
-    print(f"\nTop {k} nearest neighbors to {query_point} using Euclidean distance:")
+    print(
+        f"\nTop {k} nearest neighbors to {query_point} using Euclidean distance:")
     for neighbor in nearest_neighbors:
         print(neighbor)
 
     # Using Manhattan distance
     search_manhattan = KDTreeSearch(kd_tree, Measure.manhattan)
     nearest_neighbors = search_manhattan.find_nearest_neighbors(query_point, k)
-    print(f"\nTop {k} nearest neighbors to {query_point} using Manhattan distance:")
+    print(
+        f"\nTop {k} nearest neighbors to {query_point} using Manhattan distance:")
     for neighbor in nearest_neighbors:
         print(neighbor)
 
     # Using Cosine similarity (Note: For nearest neighbors, higher similarity is better, so we need to invert the metric)
-    search_cosine = KDTreeSearch(kd_tree, lambda p1, p2: 1 - Measure.cosine_similarity(p1, p2))
+    search_cosine = KDTreeSearch(
+        kd_tree, lambda p1, p2: 1 - Measure.cosine_similarity(p1, p2))
     nearest_neighbors = search_cosine.find_nearest_neighbors(query_point, k)
-    print(f"\nTop {k} nearest neighbors to {query_point} using Cosine similarity:")
+    print(
+        f"\nTop {k} nearest neighbors to {query_point} using Cosine similarity:")
     for neighbor in nearest_neighbors:
         print(neighbor)
 
     # Using Minkowski distance
     p = 5
-    search_minkowski = KDTreeSearch(kd_tree, lambda p1, p2: Measure.minkowski(p1, p2, p))
+    search_minkowski = KDTreeSearch(
+        kd_tree, lambda p1, p2: Measure.minkowski(p1, p2, p))
     nearest_neighbors = search_minkowski.find_nearest_neighbors(query_point, k)
-    print(f"\nTop {k} nearest neighbors to {query_point} using Minkowski distance:")
+    print(
+        f"\nTop {k} nearest neighbors to {query_point} using Minkowski distance:")
     for neighbor in nearest_neighbors:
         print(neighbor)
