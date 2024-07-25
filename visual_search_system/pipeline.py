@@ -43,7 +43,7 @@ class Pipeline:
         self.preprocessing = Preprocessing(image_size=int(image_size))
         self.model_name = f'model_size_{image_size:03}_{architecture}'
         self.model = Model(
-            f"simclr_resources/model_size_{self.model_name}.pth")
+            f"simclr_resources/{self.model_name}.pth")
         self.index = None
         self.search = None
         self.gallery_folder = gallery_folder
