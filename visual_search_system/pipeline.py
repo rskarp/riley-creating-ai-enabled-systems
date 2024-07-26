@@ -20,6 +20,8 @@ MULTI_IMAGE_GALLERY_STORAGE = "storage/multi_image_gallery"
 EMBEDDINGS_STORAGE = "storage/embeddings"
 ACCESS_LOGS_STORAGE = "storage/access_logs"
 
+parent_folder = str(Path(__file__).parent) + '/'
+
 ImageSize = Enum('ImageSize', ['064', '224'])
 Architecture = Enum('Architecture', ['resnet_018', 'resnet_034'])
 
@@ -43,7 +45,7 @@ class Pipeline:
         self.preprocessing = Preprocessing(image_size=int(image_size))
         self.model_name = f'model_size_{image_size:03}_{architecture}'
         self.model = Model(
-            f"simclr_resources/{self.model_name}.pth")
+            parent_folder + f"simclr_resources/{self.model_name}.pth")
         self.index = None
         self.search = None
         self.gallery_folder = gallery_folder
@@ -73,7 +75,7 @@ class Pipeline:
         Returns:
             None
         '''
-        pattern = self.gallery_folder + '/*/*.jpg'
+        pattern = parent_folder + self.gallery_folder + '/*/*.jpg'
         jpg_files = glob(pattern)
         points = np.zeros([len(jpg_files), self.dimension])
         metadata = []
@@ -87,7 +89,7 @@ class Pipeline:
             points[i, :] = embedding.T
             fullName = filename.split('/')[-2]
             metadata.append(
-                {'filename': filename, 'firstName': fullName.split('_')[0], 'lastName': fullName.split('_')[1:]})
+                {'filename': filename.removeprefix(parent_folder), 'firstName': fullName.split('_')[0], 'lastName': fullName.split('_')[1:]})
 
         print('Indexing embeddings...')
         self.index = KDTree(k=self.dimension, points=points,
@@ -108,7 +110,7 @@ class Pipeline:
         outputFile = filename.replace(
             self.gallery_folder, f'{EMBEDDINGS_STORAGE}/{self.model_name}')[:-3] + 'npy'
         directory = re.search(
-            r'(storage/embeddings/model_size_\d+_resnet_\d+/[^/]+)', outputFile).group(1)
+            f'({parent_folder}storage/embeddings/model_size_\d+_resnet_\d+/[^/]+)', outputFile).group(1)
         Path(directory).mkdir(parents=True, exist_ok=True)
         with open(outputFile, 'wb') as f:
             np.save(f, embedding)
@@ -130,7 +132,7 @@ class Pipeline:
 
 
 if __name__ == "__main__":
-    pipeline = Pipeline(image_size=64, architecture='resnet_034',
+    pipeline = Pipeline(image_size=64, architecture='resnet_018',
                         dimension=256, measure=Measure.euclidean, gallery_folder=GALLERY_STORAGE)
     probe = Image.open('storage/gallery/Jim_Edmonds/Jim_Edmonds_0001.jpg')
     neighbors = pipeline.search_gallery(probe, 2)
