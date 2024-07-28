@@ -131,10 +131,28 @@ class Pipeline:
         return self.search.find_nearest_neighbors(embedding, k)
 
     def set_search_measure(self, measure: Measure):
+        '''
+        Sets the search measure used in the KNN KD search to the given measure.
+
+        Parameters:
+            measure (function): The measurement function to calculate the similarity between 2 points.
+
+        Returns:
+            None
+        '''
         self.measure = measure
         self.search = KDTreeSearch(self.index, self.measure)
 
     def get_search_measure(self):
+        '''
+        Gets the search measure that's currently being used in the pipeline's KNN KD search.
+
+        Parameters:
+            None.
+
+        Returns:
+            str: Name of the similarity measure function.
+        '''
         return self.measure.__name__
 
 
