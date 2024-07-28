@@ -30,7 +30,7 @@ class RankingMetrics:
         float: Recall at k.
         """
         r = np.asarray(r)[:self.k]
-        return np.sum(r) / all_positives
+        return np.sum(r) / all_positives if all_positives != 0 else 0
 
     def average_precision_at_k(self, r):
         """
@@ -60,6 +60,21 @@ class RankingMetrics:
         float: Mean reciprocal rank at k.
         """
         return np.mean([1 / (np.argmax(r[:self.k]) + 1) if np.sum(r[:self.k]) > 0 else 0 for r in rs])
+
+    def calc_metrics(self, relevance_ranks):
+        all_positives = np.asarray([np.sum(row) for row in relevance_ranks])
+        precision = [self.precision_at_k(r) for r in relevance_ranks]
+        recall = [self.recall_at_k(r, all_pos) for r, all_pos in zip(
+            relevance_ranks, all_positives)]
+        ap = [self.average_precision_at_k(r) for r in relevance_ranks]
+        mrr = self.mean_reciprocal_rank_at_k(relevance_ranks)
+
+        return {
+            f'Precision@{self.k}': np.mean(precision),
+            f'Recall@{self.k}': np.mean(recall),
+            f'MAP@{self.k}': np.mean(ap),
+            f'MRR@{self.k}': mrr
+        }
 
 
 if __name__ == "__main__":

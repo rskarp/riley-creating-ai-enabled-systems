@@ -89,7 +89,7 @@ class Pipeline:
             points[i, :] = embedding.T
             fullName = filename.split('/')[-2]
             metadata.append(
-                {'filename': filename.removeprefix(parent_folder), 'firstName': fullName.split('_')[0], 'lastName': fullName.split('_')[1:]})
+                {'filename': filename.removeprefix(parent_folder), 'firstName': fullName.split('_')[0], 'lastName': '_'.join(fullName.split('_')[1:])})
 
         print('Indexing embeddings...')
         self.index = KDTree(k=self.dimension, points=points,
@@ -129,6 +129,13 @@ class Pipeline:
         processed = self.preprocessing.process(probe)
         embedding = self.__predict(processed)
         return self.search.find_nearest_neighbors(embedding, k)
+
+    def set_search_measure(self, measure: Measure):
+        self.measure = measure
+        self.search = KDTreeSearch(self.index, self.measure)
+
+    def get_search_measure(self):
+        return self.measure.__name__
 
 
 if __name__ == "__main__":
