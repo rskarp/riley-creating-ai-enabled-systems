@@ -65,6 +65,16 @@ class Pipeline:
         '''
         return self.model.extract(probe)
 
+    def _process_image(self, filename):
+        probe = Image.open(filename)
+        processed = self.preprocessing.process(probe)
+        embedding = self.__predict(processed)
+        self.__save_embeddings(filename, embedding)
+        fullName = filename.split('/')[-2]
+        metadata = {'filename': filename.removeprefix(parent_folder), 'firstName': fullName.split(
+            '_')[0], 'lastName': '_'.join(fullName.split('_')[1:])}
+        return embedding, metadata
+
     def __precompute(self):
         '''
         Precomputes the embeddings for all images in self.gallery_folder and construct a K-D Tree to organize the embedding.
@@ -82,14 +92,9 @@ class Pipeline:
         print('Calculating embeddings...')
         for i in range(len(jpg_files)):
             filename = jpg_files[i]
-            probe = Image.open(filename)
-            processed = self.preprocessing.process(probe)
-            embedding = self.__predict(processed)
-            self.__save_embeddings(filename, embedding)
+            embedding, meta = self._process_image(filename)
             points[i, :] = embedding.T
-            fullName = filename.split('/')[-2]
-            metadata.append(
-                {'filename': filename.removeprefix(parent_folder), 'firstName': fullName.split('_')[0], 'lastName': '_'.join(fullName.split('_')[1:])})
+            metadata.append(meta)
 
         print('Indexing embeddings...')
         self.index = KDTree(k=self.dimension, points=points,
@@ -154,6 +159,25 @@ class Pipeline:
             str: Name of the similarity measure function.
         '''
         return self.measure.__name__
+
+    def add_identity(self, filename: str):
+        embedding, metadata = self._process_image(filename)
+        self.index.insert(embedding.T, metadata)
+        self.search = KDTreeSearch(self.index, self.measure)
+
+    def remove_identity(self, imageFilename: str, delete_file: bool = False):
+        if os.path.isfile(imageFilename):
+            fullName = imageFilename.split('/')[-2]
+            baseName = os.path.basename(imageFilename)
+            embeddingFilename = f'{parent_folder}{EMBEDDINGS_STORAGE}/{self.model_name}/{fullName}/{baseName[:-4]}.npy'
+            with open(embeddingFilename, 'rb') as f:
+                embedding = np.load(f).T
+            self.index.remove(embedding.T)
+            self.search = KDTreeSearch(self.index, self.measure)
+
+            if delete_file:
+                os.remove(imageFilename)
+                os.remove(embeddingFilename)
 
 
 if __name__ == "__main__":

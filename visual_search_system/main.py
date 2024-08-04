@@ -28,11 +28,31 @@ def authenticate():
     JSON response with a list of predicted identities.
     """
     data = request.get_json()
+    print(request.files)
     if not data:
         return jsonify({"error": "No data provided"}), 400
 
     predictions = deployment.authenticate(data)
     return jsonify({"predictions": predictions}), 200
+
+
+@app.route('/identity', methods=['GET'])
+def get_identity():
+    """
+    Route to get list of image files for an identity in the gallery.
+
+    URL Parameters:
+    full_name (str): Name of the identity.
+
+    Returns:
+    JSON response with a list of filenames.
+    """
+    full_name = request.args.get('full_name', '')
+    if full_name == '':
+        return jsonify({"error": "full_name must be provided"}), 400
+
+    files = deployment.get_identity(full_name)
+    return jsonify({"files": files}), 200
 
 
 @app.route('/add_identity', methods=['PUT'])
@@ -105,8 +125,8 @@ def get_access_logs():
     return jsonify({"access_logs": access_logs}), 200
 
 
-@app.route('/predictions', methods=['POST'])
-def get_predictions():
+@app.route('/images', methods=['POST'])
+def get_image_files():
     """
     Route to get the image files and the names of the predicted identities.
 
@@ -119,11 +139,11 @@ def get_predictions():
     data = request.get_json()
     if not data:
         return jsonify({"error": "No data provided"}), 400
-    stream = deployment.get_predictions(data)
+    stream = deployment.get_image_files(data)
     return send_file(
         stream,
         as_attachment=True,
-        download_name='predictions.zip'
+        download_name='images.zip'
     )
 
 
