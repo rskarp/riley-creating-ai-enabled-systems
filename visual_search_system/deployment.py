@@ -1,4 +1,5 @@
 from glob import glob
+from typing import List
 from pipeline import MULTI_IMAGE_GALLERY_STORAGE, Pipeline
 from src.search.search import Measure
 from src.metrics import RankingMetrics
@@ -8,7 +9,6 @@ import json
 from PIL import Image
 from io import BytesIO
 from zipfile import ZipFile
-from dateutil import parser
 
 
 class Deployment:
@@ -27,7 +27,17 @@ class Deployment:
         self.metrics = RankingMetrics(k=self.k)
         self.log_date_format = "%Y%m%d_%H%M%S"
 
-    def _save_access_log(self, image: Image, predictions):
+    def _save_access_log(self, image: Image, predictions: List):
+        """
+        Saves image to .jpg file and predictions to .json file.
+
+        Parameters:
+            image (PIL.Image): image of the person to be saved as jpg.
+            predictions (List): list of prediction objects to be saved as json.
+        Returns:
+            None
+        """
+        # Get timestamp and create log filename based on timestamp
         timestamp = datetime.now()
         filename = f'{timestamp.strftime(self.log_date_format)}'
         path = 'storage/logs'
@@ -50,7 +60,7 @@ class Deployment:
         Get predicted identities for the given probe image.
 
         Parameters:
-            image (ndarray): Image of the person.
+            image (PIL.Image): Image of the person.
 
         Returns:
             List: list of predicted identities.
@@ -60,12 +70,12 @@ class Deployment:
         self._save_access_log(image, neighbor_metadata)
         return neighbor_metadata
 
-    def get_identity(self, fullName):
+    def get_identity(self, fullName: str):
         """
         Get image files in gallery associated with the given identity.
 
         Parameters:
-            full_name (str): Name of the identity.
+            fullName (str): Name of the identity.
 
         Returns:
             List: image file names for the given identity.
@@ -76,22 +86,22 @@ class Deployment:
         identity_files = glob(pattern)
         return identity_files
 
-    def add_identity(self, fullName, image: Image):
+    def add_identity(self, fullName: str, image: Image):
         """
         Add identity to the gallery.
 
         Parameters:
-            full_name (str): Name of the identity.
-            image (ndarray): Image of the person.
+            fullName (str): Name of the identity.
+            image (PIL.Image): Image of the person.
 
         Returns:
-            Dict: description.
+            str: Name given to the image file that was added to the gallery.
         """
         cleanName = fullName.strip().replace(" ", "_")
         folder = MULTI_IMAGE_GALLERY_STORAGE + '/' + cleanName
         # Create folder if it doesn't exist
         os.makedirs(folder, exist_ok=True)
-        # Determine new filename
+        # Determine new filename using full name
         pattern = f'{folder}/*.jpg'
         identity_files = glob(pattern)
         filename = f'{folder}/{cleanName}_{len(identity_files)+1:04}.jpg'
@@ -101,28 +111,28 @@ class Deployment:
         self.pipeline.add_identity(filename)
         return filename
 
-    def remove_identity(self, imageFilename):
+    def remove_identity(self, imageFilename: str):
         """
-        Remove identity from the gallery.
+        Remove image identity from the gallery.
 
         Parameters:
-            imageFilename (str): Name of the identity to remove.
+            imageFilename (str): Name of the image to remove.
 
         Returns:
-            Dict: description.
+            str: Name of the image file that was removed.
         """
         # Removed from KD tree and gallery
         self.pipeline.remove_identity(imageFilename, True)
         # Return removed filename
         return imageFilename
 
-    def get_access_logs(self, start_time, end_time):
+    def get_access_logs(self, start_time: datetime, end_time: datetime):
         """
         Get the access log history of a specific time period.
 
         Parameters:
-            start_time (str): Starting time of time range.
-            end_time (str): Ending time of timerange.
+            start_time (datetime): Starting time of time range.
+            end_time (datetime): Ending time of time range.
 
         Returns:
             List: access logs.
@@ -137,7 +147,7 @@ class Deployment:
                 logs.append(data)
         return logs
 
-    def get_image_files(self, files):
+    def get_image_files(self, files: List):
         """
         Get the image files and the names of the given identities.
 

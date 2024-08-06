@@ -66,6 +66,15 @@ class Pipeline:
         return self.model.extract(probe)
 
     def _process_image(self, filename):
+        '''
+        Save embeddings and extract metadata object for a given image file.
+
+        Parameters:
+            filename (str): the name of the image file to be processsed.
+
+        Returns:
+            tuple: the embedding vector and metadata dictionary associated with the given image.
+        '''
         probe = Image.open(filename)
         processed = self.preprocessing.process(probe)
         embedding = self.__predict(processed)
@@ -161,20 +170,44 @@ class Pipeline:
         return self.measure.__name__
 
     def add_identity(self, filename: str):
+        """
+        Add identity to the gallery.
+
+        Parameters:
+            filename (str): Name of the image file to add to the KD Tree.
+
+        Returns:
+            None.
+        """
         embedding, metadata = self._process_image(f'{parent_folder}{filename}')
         self.index.insert(embedding.T, metadata)
         self.search = KDTreeSearch(self.index, self.measure)
 
     def remove_identity(self, imageFilename: str, delete_file: bool = False):
+        """
+        Remove image identity from the gallery.
+
+        Parameters:
+            imageFilename (str): Name of the image to remove.
+            delete_file (bool, default = False): Boolean flag indicating whether or not to delete the image and embedding files.
+
+        Returns:
+            None.
+        """
+        # Only continue if the image file exists
         if os.path.isfile(imageFilename):
             fullName = imageFilename.split('/')[-2]
             baseName = os.path.basename(imageFilename)
+            # Get the name of the embedding file associated with this image file
             embeddingFilename = f'{parent_folder}{EMBEDDINGS_STORAGE}/{self.model_name}/{fullName}/{baseName[:-4]}.npy'
+            # Load the embedding vector from file
             with open(embeddingFilename, 'rb') as f:
                 embedding = np.load(f).T
+            # Remove the embedding vector from the KD Tree
             self.index.remove(embedding.T)
             self.search = KDTreeSearch(self.index, self.measure)
 
+            # Delete the image and embedding files
             if delete_file:
                 os.remove(imageFilename)
                 os.remove(embeddingFilename)
