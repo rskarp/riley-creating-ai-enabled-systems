@@ -71,7 +71,7 @@ def add_identity():
     Image of the person.
 
     Returns:
-    JSON response with a success message and description.
+    JSON response with the name given to the uploaded file.
     """
     full_name = request.args.get('full_name', '')
     if full_name == '':
@@ -95,7 +95,7 @@ def remove_identity():
     filename (str): Name of the identity to remove.
 
     Returns:
-    JSON response with a success message and description.
+    JSON response with filename of the deleted file.
     """
     filename = request.args.get('filename', '')
     if filename == '':
@@ -138,7 +138,7 @@ def get_access_logs():
 @app.route('/images', methods=['POST'])
 def get_image_files():
     """
-    Route to get the image files and the names of the predicted identities.
+    Route to get the image files associated with the given filenames.
 
     Request body:
     JSON object containing list of image filenames.
