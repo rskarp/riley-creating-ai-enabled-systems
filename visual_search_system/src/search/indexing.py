@@ -1,3 +1,6 @@
+import numpy as np
+
+
 class Node:
     """A node in a KDTree.
 
@@ -147,7 +150,7 @@ class KDTree:
 
         axis = depth % self.k
 
-        if root.point == point:
+        if np.array_equal(root.point, point):
             if root.right is not None:
                 min_node = self._find_min(root.right, axis, depth + 1)
                 root.point = min_node.point

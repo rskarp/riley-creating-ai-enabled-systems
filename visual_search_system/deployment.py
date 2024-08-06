@@ -27,7 +27,7 @@ class Deployment:
         self.metrics = RankingMetrics(k=self.k)
         self.log_date_format = "%Y%m%d_%H%M%S"
 
-    def _save_access_log(self, image, predictions):
+    def _save_access_log(self, image: Image, predictions):
         timestamp = datetime.now()
         filename = f'{timestamp.strftime(self.log_date_format)}'
         path = 'storage/logs'
@@ -35,7 +35,7 @@ class Deployment:
         # Create folder if it doesn't exist
         os.makedirs(path, exist_ok=True)
         # Save image file
-        Image.fromarray(image).save(imageFile)
+        image.save(imageFile)
         # Save log information in json file
         log_entry = {
             'image_file': imageFile,
@@ -43,9 +43,9 @@ class Deployment:
             'predictions': predictions
         }
         with open(f'{path}/{filename}.json', "w") as log:
-            json.dump(log_entry, log, indent=4)
+            json.dump(log_entry, log, indent=4, default=str)
 
-    def authenticate(self, image):
+    def authenticate(self, image: Image):
         """
         Get predicted identities for the given probe image.
 
@@ -56,18 +56,19 @@ class Deployment:
             List: list of predicted identities.
         """
         neighbors = self.pipeline.search_gallery(image, self.k)
-        self._save_access_log(image, neighbors)
-        return neighbors
+        neighbor_metadata = [n[1] for n in neighbors]
+        self._save_access_log(image, neighbor_metadata)
+        return neighbor_metadata
 
     def get_identity(self, fullName):
         """
-        Add identity to the gallery.
+        Get image files in gallery associated with the given identity.
 
         Parameters:
             full_name (str): Name of the identity.
 
         Returns:
-            List: description.
+            List: image file names for the given identity.
         """
         cleanName = fullName.strip().replace(" ", "_")
         folder = MULTI_IMAGE_GALLERY_STORAGE + '/' + cleanName
@@ -75,7 +76,7 @@ class Deployment:
         identity_files = glob(pattern)
         return identity_files
 
-    def add_identity(self, fullName, image):
+    def add_identity(self, fullName, image: Image):
         """
         Add identity to the gallery.
 
@@ -95,7 +96,7 @@ class Deployment:
         identity_files = glob(pattern)
         filename = f'{folder}/{cleanName}_{len(identity_files)+1:04}.jpg'
         # Save image file
-        Image.fromarray(image).save(filename)
+        image.save(filename)
         # Add new image to KD Tree
         self.pipeline.add_identity(filename)
         return filename
@@ -105,13 +106,15 @@ class Deployment:
         Remove identity from the gallery.
 
         Parameters:
-            full_name (str): Name of the identity to remove.
+            imageFilename (str): Name of the identity to remove.
 
         Returns:
             Dict: description.
         """
-        # Remvoe from KD tree and gallery
+        # Removed from KD tree and gallery
         self.pipeline.remove_identity(imageFilename, True)
+        # Return removed filename
+        return imageFilename
 
     def get_access_logs(self, start_time, end_time):
         """
@@ -125,12 +128,10 @@ class Deployment:
             List: access logs.
         """
         logs = []
-        start = parser.parse(start_time)
-        end = parser.parse(end_time)
         pattern = 'storage/logs/*.json'
         logFiles = glob(pattern)
         for f in logFiles:
-            if start <= datetime.strptime(f[:-5], self.log_date_format) <= end:
+            if start_time <= datetime.strptime(f.removeprefix('storage/logs/').removesuffix('.json'), self.log_date_format) <= end_time:
                 with open(f, 'r') as file:
                     data = json.load(file)
                 logs.append(data)

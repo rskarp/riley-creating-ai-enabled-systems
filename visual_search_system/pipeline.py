@@ -120,7 +120,7 @@ class Pipeline:
         with open(outputFile, 'wb') as f:
             np.save(f, embedding)
 
-    def search_gallery(self, probe: np.ndarray, k: int) -> List:
+    def search_gallery(self, probe: Image, k: int) -> List:
         '''
         Returns the nearest neighbors of a probe.
 
@@ -161,7 +161,7 @@ class Pipeline:
         return self.measure.__name__
 
     def add_identity(self, filename: str):
-        embedding, metadata = self._process_image(filename)
+        embedding, metadata = self._process_image(f'{parent_folder}{filename}')
         self.index.insert(embedding.T, metadata)
         self.search = KDTreeSearch(self.index, self.measure)
 
