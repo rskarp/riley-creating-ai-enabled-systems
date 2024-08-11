@@ -93,7 +93,7 @@ Here are step-by-step instructions to run the Flask application locally:
    - **GET /predictions**: Get the image files with detections and associated prediction files. Requires `start_frame` and `end_frame` parameters.
 
    **Example Requests**
-   Examples of using all of the API endpoints can be seen in the Postman collection saved to [assets/EN.705.603.82 Case Study 7.postman_collection.json](../assets/EN.705.603.82%20Case%20Study%207.postman_collection.json). You can download the collection and import into Postman to make the requests. Some very basic curl requests are also demonstrated below.
+   Examples of using all of the API endpoints can be seen in the Postman collection saved to [assets/EN.705.603.82 Case Study 7.postman_collection.json](./assets/EN.705.603.82%20Case%20Study%207.postman_collection.json). You can download the collection and import into Postman to make the requests. Some very basic curl requests are also demonstrated below.
 
    - **Get Detections:**
 

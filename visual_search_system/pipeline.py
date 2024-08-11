@@ -65,6 +65,25 @@ class Pipeline:
         '''
         return self.model.extract(probe)
 
+    def _process_image(self, filename):
+        '''
+        Save embeddings and extract metadata object for a given image file.
+
+        Parameters:
+            filename (str): the name of the image file to be processsed.
+
+        Returns:
+            tuple: the embedding vector and metadata dictionary associated with the given image.
+        '''
+        probe = Image.open(filename)
+        processed = self.preprocessing.process(probe)
+        embedding = self.__predict(processed)
+        self.__save_embeddings(filename, embedding)
+        fullName = filename.split('/')[-2]
+        metadata = {'filename': filename.removeprefix(parent_folder), 'firstName': fullName.split(
+            '_')[0], 'lastName': '_'.join(fullName.split('_')[1:])}
+        return embedding, metadata
+
     def __precompute(self):
         '''
         Precomputes the embeddings for all images in self.gallery_folder and construct a K-D Tree to organize the embedding.
@@ -82,14 +101,9 @@ class Pipeline:
         print('Calculating embeddings...')
         for i in range(len(jpg_files)):
             filename = jpg_files[i]
-            probe = Image.open(filename)
-            processed = self.preprocessing.process(probe)
-            embedding = self.__predict(processed)
-            self.__save_embeddings(filename, embedding)
+            embedding, meta = self._process_image(filename)
             points[i, :] = embedding.T
-            fullName = filename.split('/')[-2]
-            metadata.append(
-                {'filename': filename.removeprefix(parent_folder), 'firstName': fullName.split('_')[0], 'lastName': '_'.join(fullName.split('_')[1:])})
+            metadata.append(meta)
 
         print('Indexing embeddings...')
         self.index = KDTree(k=self.dimension, points=points,
@@ -115,7 +129,7 @@ class Pipeline:
         with open(outputFile, 'wb') as f:
             np.save(f, embedding)
 
-    def search_gallery(self, probe: np.ndarray, k: int) -> List:
+    def search_gallery(self, probe: Image, k: int) -> List:
         '''
         Returns the nearest neighbors of a probe.
 
@@ -154,6 +168,49 @@ class Pipeline:
             str: Name of the similarity measure function.
         '''
         return self.measure.__name__
+
+    def add_identity(self, filename: str):
+        """
+        Add identity to the gallery.
+
+        Parameters:
+            filename (str): Name of the image file to add to the KD Tree.
+
+        Returns:
+            None.
+        """
+        embedding, metadata = self._process_image(f'{parent_folder}{filename}')
+        self.index.insert(embedding.T, metadata)
+        self.search = KDTreeSearch(self.index, self.measure)
+
+    def remove_identity(self, imageFilename: str, delete_file: bool = False):
+        """
+        Remove image identity from the gallery.
+
+        Parameters:
+            imageFilename (str): Name of the image to remove.
+            delete_file (bool, default = False): Boolean flag indicating whether or not to delete the image and embedding files.
+
+        Returns:
+            None.
+        """
+        # Only continue if the image file exists
+        if os.path.isfile(imageFilename):
+            fullName = imageFilename.split('/')[-2]
+            baseName = os.path.basename(imageFilename)
+            # Get the name of the embedding file associated with this image file
+            embeddingFilename = f'{parent_folder}{EMBEDDINGS_STORAGE}/{self.model_name}/{fullName}/{baseName[:-4]}.npy'
+            # Load the embedding vector from file
+            with open(embeddingFilename, 'rb') as f:
+                embedding = np.load(f).T
+            # Remove the embedding vector from the KD Tree
+            self.index.remove(embedding.T)
+            self.search = KDTreeSearch(self.index, self.measure)
+
+            # Delete the image and embedding files
+            if delete_file:
+                os.remove(imageFilename)
+                os.remove(embeddingFilename)
 
 
 if __name__ == "__main__":

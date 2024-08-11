@@ -1,0 +1,215 @@
+{
+	"info": {
+		"_postman_id": "0ace21bf-ac54-497c-af94-ab8435833e7e",
+		"name": "EN.705.603.82 Case Study 9",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "22457696"
+	},
+	"item": [
+		{
+			"name": "/",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/authenticate",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "image",
+							"type": "file",
+							"src": []
+						}
+					]
+				},
+				"url": {
+					"raw": "{{base_url}}/authenticate",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"authenticate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/identity",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/identity?full_name=Pedro Malan",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"identity"
+					],
+					"query": [
+						{
+							"key": "full_name",
+							"value": "Pedro Malan"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/add_identity",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "image",
+							"type": "file",
+							"src": []
+						}
+					]
+				},
+				"url": {
+					"raw": "{{base_url}}/add_identity?full_name=Riley Karp",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"add_identity"
+					],
+					"query": [
+						{
+							"key": "full_name",
+							"value": "Riley Karp"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/remove_identity",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/remove_identity?filename=storage/multi_image_gallery/Pedro_Malan/Pedro_Malan_0001.jpg",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"remove_identity"
+					],
+					"query": [
+						{
+							"key": "filename",
+							"value": "storage/multi_image_gallery/Pedro_Malan/Pedro_Malan_0001.jpg"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/access_logs",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/access_logs?start_time=2024-08-05&end_time=2024-08-07",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"access_logs"
+					],
+					"query": [
+						{
+							"key": "start_time",
+							"value": "2024-08-05"
+						},
+						{
+							"key": "end_time",
+							"value": "2024-08-07"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/images",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"files\": [\n        \"storage/multi_image_gallery/Pedro_Malan/Pedro_Malan_0004.jpg\",\n        \"storage/multi_image_gallery/Pedro_Malan/Pedro_Malan_0002.jpg\",\n        \"storage/multi_image_gallery/Pedro_Malan/Pedro_Malan_0003.jpg\",\n        \"storage/multi_image_gallery/Pedro_Malan/Pedro_Malan_0001.jpg\"\n    ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/images",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"images"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://127.0.0.1:8000",
+			"type": "string"
+		}
+	]
+}
