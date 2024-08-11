@@ -1,0 +1,9 @@
+Flask
+matplotlib
+numpy
+pandas
+python-dateutil
+scikit-learn
+sentence_transformers
+torch
+transformers

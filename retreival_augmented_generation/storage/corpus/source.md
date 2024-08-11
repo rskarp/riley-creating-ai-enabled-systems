@@ -1,0 +1,1 @@
+This is a subset of the rag-mini-wikipedia dataset. https://huggingface.co/datasets/rag-datasets/rag-mini-wikipedia
