@@ -15,4 +15,4 @@ RUN pip install -r requirements.txt
 EXPOSE 8000
 
 # Run main.py when the container launches
-CMD ["python", "main.py"]
+CMD ["python", "pipeline.py"]

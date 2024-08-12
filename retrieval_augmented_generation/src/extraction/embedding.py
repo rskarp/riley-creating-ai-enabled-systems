@@ -16,7 +16,7 @@ class Embedding:
         Encodes the given sentence into an embedding.
     """
 
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, device: str = None):
         """
         Initializes the Embedding class with a specified model name.
 
@@ -25,7 +25,8 @@ class Embedding:
         model_name : str
             The name of the pre-trained model to be used for encoding.
         """
-        self.model = SentenceTransformer(model_name)
+        self.device = device
+        self.model = SentenceTransformer(model_name, device=self.device)
 
     def encode(self, sentence):
         """
@@ -41,7 +42,7 @@ class Embedding:
         np.ndarray
             The embedding of the given sentence.
         """
-        return self.model.encode(sentence)
+        return self.model.encode(sentence, device=self.device)
 
 
 if __name__ == "__main__":

@@ -83,6 +83,19 @@ class DocumentProcessing:
         ]
         return chunks
 
+    def get_topic(self, document_filename):
+        """
+        Gets the topic of the given document basde on its first line.
+
+        :param document_filename: The filename of the document to be read.
+        :type document_filename: str
+        :return: A string containing the topic of the specified document.
+        :rtype: string
+        """
+        with open(document_filename, "r", encoding="utf-8") as file:
+            topic = file.readline().strip()
+        return topic
+
 
 if __name__ == "__main__":
     processing = DocumentProcessing()

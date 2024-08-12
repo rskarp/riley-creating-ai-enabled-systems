@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 import os
+import torch
 
 # Location of storage
 EMBEDDINGS_STORAGE = "storage/embeddings"
@@ -38,7 +39,8 @@ class Pipeline:
         """
         self.processing = DocumentProcessing()
         self.embedding_model_name = embedding_model_name
-        self.embedding_model = Embedding(self.embedding_model_name)
+        device = "mps" if torch.backends.mps.is_available() else None
+        self.embedding_model = Embedding(self.embedding_model_name, device)
         self.qa_model_name = qa_model_name
         self.qa_model = BERTQuestionAnswer(self.qa_model_name)
         self.index = None
@@ -105,6 +107,7 @@ class Pipeline:
                     "sentences": chunk,
                     "chunk_number": idx,
                     "document": os.path.basename(document),
+                    "topic": self.processing.get_topic(document),
                 }
                 metadata.append(meta)
 
@@ -144,6 +147,18 @@ class Pipeline:
             str: Name of the similarity measure function.
         """
         return self.measure.__name__
+
+    def get_embedding(self, text):
+        """
+        Wrapper to extract the embedding vector output from a preprocessed text using self.__predict()
+
+        Parameters:
+            text (str): The input text string.
+
+        Returns:
+            ndarray: The embedding vector.
+        """
+        return self.__predict(text)
 
 
 if __name__ == "__main__":

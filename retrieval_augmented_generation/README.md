@@ -30,18 +30,8 @@ Here are step-by-step instructions to run the Flask application locally:
    Start the application:
 
    ```sh
-   python main.py
+   python pipeline.py
    ```
-
-4. **Access the Flask Application:**
-
-   Open your web browser and navigate to:
-
-   ```
-   http://localhost:8000
-   ```
-
-   You should see the "Welcome to Riley's Visual Search System!" message from the index route. Your flask server is now properly running!
 
 ## Instructions to Run the Flask application with Docker:
 
@@ -56,7 +46,7 @@ Here are step-by-step instructions to run the Flask application with Docker:
    Build the Docker image from the Dockerfile:
 
    ```sh
-   docker build -t visual_search_system:latest .
+   docker build -t retrieval_augmented_generation:latest .
    ```
 
 3. **Run the Docker Container:**
@@ -64,5 +54,5 @@ Here are step-by-step instructions to run the Flask application with Docker:
    Run the Docker container with the built image (Flask application on port 8000):
 
    ```sh
-   docker run -it --rm -p 8000:8000 visual_search_system
+   docker run -it --rm -p 8000:8000 retrieval_augmented_generation
    ```
