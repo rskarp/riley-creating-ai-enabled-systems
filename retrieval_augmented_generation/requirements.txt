@@ -1,5 +1,6 @@
 Flask
 matplotlib
+nltk
 numpy
 pandas
 python-dateutil

@@ -1,5 +1,6 @@
 from sentence_transformers import SentenceTransformer
 
+
 class Embedding:
     """
     A class used to encode sentences into embeddings using a specified pre-trained model.
@@ -44,10 +45,11 @@ class Embedding:
 
 
 if __name__ == "__main__":
-    # You can try different sentence encoders here: 
+    # You can try different sentence encoders here:
     # https://sbert.net/docs/sentence_transformer/pretrained_models.html
-    
-    model_name = 'all-MiniLM-L6-v2'
+
+    model_name = "all-MiniLM-L6-v2"
+    model_name = "all-mpnet-base-v2"
     sentence_encoder_model = Embedding(model_name)
 
     sentence = "Who suggested Lincoln grow a beard?"
@@ -55,4 +57,3 @@ if __name__ == "__main__":
 
     print(sentence_embedding)
     print(sentence_embedding.shape)
-

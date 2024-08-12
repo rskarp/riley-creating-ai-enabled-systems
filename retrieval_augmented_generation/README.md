@@ -1,6 +1,6 @@
-# Retreival Augmented Generation
+# Retrieval Augmented Generation
 
-This project contains all of the code components necessary to run a retreival augmented generation system.
+This project contains all of the code components necessary to run a retrieval augmented generation system.
 
 ## Instructions
 
@@ -14,7 +14,7 @@ Here are step-by-step instructions to run the Flask application locally:
 
    ```sh
    git clone https://github.com/creating-ai-enabled-systems-summer-2024/karp-riley.git
-   cd karp-riley/retreival_augmented_generation
+   cd karp-riley/retrieval_augmented_generation
    ```
 
 2. **Install dependencies from the Requirements File:**
