@@ -43,7 +43,8 @@ class BERTQuestionAnswer:
         # Encode the input question and context
         context = "[SEP] ".join(context)
 
-        inputs = self.tokenizer.encode_plus(question, context, return_tensors="pt")
+        inputs = self.tokenizer.encode_plus(
+            question, context, return_tensors="pt", truncation=True)
 
         # Get the start and end scores for the answer
         with torch.no_grad():
@@ -59,7 +60,7 @@ class BERTQuestionAnswer:
         # Decode the answer
         answer = self.tokenizer.convert_tokens_to_string(
             self.tokenizer.convert_ids_to_tokens(
-                inputs["input_ids"][0][start_index : end_index + 1]
+                inputs["input_ids"][0][start_index: end_index + 1]
             )
         )
 

@@ -74,7 +74,7 @@ class Pipeline:
         Returns:
             None
         """
-        directory = f"{parent_folder}/{EMBEDDINGS_STORAGE}/{self.embedding_model_name}"
+        directory = f"{parent_folder}/{EMBEDDINGS_STORAGE}/{self.embedding_model_name}/{self.sentences_per_chunk}_spc"
         outputFile = (
             f"{directory}/{os.path.basename(document_filename)}_{segment_number}.npy"
         )
@@ -98,7 +98,8 @@ class Pipeline:
                 # Calculate Embedding
                 embedding = self.__predict(chunk)
                 points = (
-                    embedding.T if points is None else np.vstack([points, embedding.T])
+                    embedding.T if points is None else np.vstack(
+                        [points, embedding.T])
                 )
                 # Save embedding
                 self.__save_embeddings(document, idx, embedding)
@@ -112,7 +113,8 @@ class Pipeline:
                 metadata.append(meta)
 
         print("Indexing embeddings...")
-        self.index = KDTree(k=points.shape[1], points=points, metadata_list=metadata)
+        self.index = KDTree(
+            k=points.shape[1], points=points, metadata_list=metadata)
         self.search = KDTreeSearch(self.index, self.measure)
 
     def search_context(self, question: str, k: int):
