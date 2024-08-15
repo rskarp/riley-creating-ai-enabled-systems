@@ -1,0 +1,11 @@
+Flask
+matplotlib
+nltk
+numpy
+pandas
+python-dateutil
+qa-metrics
+scikit-learn
+sentence_transformers
+torch
+transformers
