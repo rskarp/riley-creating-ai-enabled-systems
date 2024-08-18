@@ -30,7 +30,7 @@ Here are step-by-step instructions to run the Flask application locally:
    Start the application:
 
    ```sh
-   python pipeline.py
+   python main.py
    ```
 
 ## Instructions to Run the Flask application with Docker:
