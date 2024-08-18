@@ -15,6 +15,7 @@ object_detection_system/storages/*
 visual_search_system/storage/*
 visual_search_system/simclr_resources/probe/*
 retrieval_augmented_generation/storage/embeddings/*
+retrieval_augmented_generation/storage/logs/*
 
 # Keep data placehodler text file
 !fraud_detection_system/data/put_data_here.txt

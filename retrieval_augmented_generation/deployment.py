@@ -75,7 +75,7 @@ class Deployment:
         context = [n['sentences'] for n in neighbor_metadata]
         answer = self.pipeline.get_answer(question, context)
         self._save_access_log(question, answer, neighbor_metadata)
-        return {'answer': answer, 'context': context}
+        return {'answer': answer, 'context': neighbor_metadata}
 
     def get_documents(self):
         """
@@ -100,7 +100,7 @@ class Deployment:
         """
         filename = f'{CORPUS_STORAGE}/{filename}'
         # Save file
-        with open(filename, 'w') as fp:
+        with open(filename, 'wb') as fp:
             fp.write(document)
         # Add new document to KD Tree
         self.pipeline.add_document(filename)

@@ -48,7 +48,7 @@ def get_documents():
     return jsonify({"files": files}), 200
 
 
-@app.route('/add_document', methods=['PUT'])
+@app.route('/document', methods=['PUT'])
 def add_document():
     """
     Route to add document to the corpus.
@@ -68,7 +68,7 @@ def add_document():
     return jsonify({"filename": description}), 200
 
 
-@app.route('/remove_document', methods=['DELETE'])
+@app.route('/document', methods=['DELETE'])
 def remove_document():
     """
     Route to remove document from the corpus.

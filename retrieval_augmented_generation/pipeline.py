@@ -206,7 +206,7 @@ class Pipeline:
             None
         """
         embeddings, metadata = self._process_document(
-            f'{parent_folder}{filename}')
+            f'{parent_folder}/{filename}')
         for i in range(embeddings.shape[0]):
             self.index.insert(embeddings[i, :], metadata[i])
         self.search = KDTreeSearch(self.index, self.measure)
@@ -230,7 +230,7 @@ class Pipeline:
             # Get base filename
             baseName = os.path.basename(filename)
             # Get the name of the embedding file associated with this image file
-            pattern = f'{parent_folder}/{EMBEDDINGS_STORAGE}/{self.model_name}/{self.sentences_per_chunk}_spc/{baseName}*.npy'
+            pattern = f'{parent_folder}/{EMBEDDINGS_STORAGE}/{self.embedding_model_name}/{self.sentences_per_chunk}_spc/{baseName}*.npy'
             documentEmbeddings = glob(pattern)
             # Remove all embeddings for each document chunk
             for embeddingFilename in documentEmbeddings:
