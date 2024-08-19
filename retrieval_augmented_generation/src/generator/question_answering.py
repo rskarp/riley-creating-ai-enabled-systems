@@ -1,5 +1,8 @@
 import torch
 from transformers import BertTokenizer, BertForQuestionAnswering
+import transformers
+
+transformers.logging.set_verbosity_error()
 
 
 class BERTQuestionAnswer:

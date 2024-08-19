@@ -30,7 +30,7 @@ class Deployment:
             sentences_per_chunk=self.sentences_per_chunk,
         )
 
-        self.k = 3
+        self.k = 10
         self.log_date_format = "%Y%m%d_%H%M%S"
 
     def _save_access_log(self, question: str, answer: str, context: List):

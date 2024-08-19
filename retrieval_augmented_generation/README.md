@@ -92,7 +92,7 @@ Here are step-by-step instructions to run the Flask application locally:
    - **Initiate question answering process:**
 
      ```sh
-     curl -X POST "http://localhost:8000/question" --header 'Content-Type: application/json' --data '{"question": "<QUESTION_TEXT>""}'
+     curl -X POST "http://localhost:8000/question" --header 'Content-Type: application/json' --data '{"question": "<QUESTION_TEXT>"}'
      ```
 
    - **Get documents list:**
