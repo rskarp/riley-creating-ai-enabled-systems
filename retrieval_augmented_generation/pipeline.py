@@ -1,4 +1,5 @@
 from glob import glob
+from typing import List
 from src.extraction.embedding import Embedding
 from src.extraction.preprocessing import DocumentProcessing
 from src.generator.question_answering import BERTQuestionAnswer
@@ -82,6 +83,40 @@ class Pipeline:
         with open(outputFile, "wb") as f:
             np.save(f, embedding)
 
+    def _process_document(self, document):
+        '''
+        Save embeddings and extract metadata object for a given document file.
+
+        Parameters:
+            filename (str): the name of the document file to be processsed.
+
+        Returns:
+            tuple: the embedding vectors and metadata dictionary associated with the given document.
+        '''
+        points = None
+        metadata = []
+        chunks = self.processing.split_document(
+            document, sentences_per_chunk=self.sentences_per_chunk
+        )
+        for idx, chunk in enumerate(chunks):
+            # Calculate Embedding
+            embedding = self.__predict(chunk)
+            points = (
+                embedding.T if points is None else np.vstack(
+                    [points, embedding.T])
+            )
+            # Save embedding
+            self.__save_embeddings(document, idx, embedding)
+            # Get metadata
+            meta = {
+                "sentences": chunk,
+                "chunk_number": idx,
+                "document": os.path.basename(document),
+                "topic": self.processing.get_topic(document),
+            }
+            metadata.append(meta)
+        return points, metadata
+
     def __precompute(self):
         """
         Precomputes the embeddings for all text chunks in storage/corpus/*.txt.clean and constructs a K-D Tree to organize the embeddings.
@@ -91,27 +126,12 @@ class Pipeline:
         metadata = []
         print("Calculating embeddings...")
         for document in documents:
-            chunks = self.processing.split_document(
-                document, sentences_per_chunk=self.sentences_per_chunk
+            embeddings, meta = self._process_document(document)
+            points = (
+                embeddings if points is None else np.vstack(
+                    [points, embeddings])
             )
-            for idx, chunk in enumerate(chunks):
-                # Calculate Embedding
-                embedding = self.__predict(chunk)
-                points = (
-                    embedding.T if points is None else np.vstack(
-                        [points, embedding.T])
-                )
-                # Save embedding
-                self.__save_embeddings(document, idx, embedding)
-                # Get metadata
-                meta = {
-                    "sentences": chunk,
-                    "chunk_number": idx,
-                    "document": os.path.basename(document),
-                    "topic": self.processing.get_topic(document),
-                }
-                metadata.append(meta)
-
+            metadata.extend(meta)
         print("Indexing embeddings...")
         self.index = KDTree(
             k=points.shape[1], points=points, metadata_list=metadata)
@@ -161,6 +181,68 @@ class Pipeline:
             ndarray: The embedding vector.
         """
         return self.__predict(text)
+
+    def get_answer(self, question: str, context: List):
+        """
+        Get answer for given question using given context.
+
+        Parameters:
+            question (str): Question to be answered.
+            context (List): List of context chunks to be used.
+
+        Returns:
+            str: answer to the question.
+        """
+        return self.qa_model.get_answer(question, context)
+
+    def add_document(self, filename: str):
+        """
+        Add document to the corpus.
+
+        Parameters:
+            filename (str): Name of the document to add to the KD Tree.
+
+        Returns:
+            None
+        """
+        embeddings, metadata = self._process_document(
+            f'{parent_folder}/{filename}')
+        for i in range(embeddings.shape[0]):
+            self.index.insert(embeddings[i, :], metadata[i])
+        self.search = KDTreeSearch(self.index, self.measure)
+
+    def remove_document(self, filename: str, delete_file: bool = False):
+        """
+        Remove document from the corpus.
+
+        Parameters:
+            filename (str): Name of the document to remove.
+            delete_file (bool, default = False): Boolean flag indicating whether or not to delete the document and embedding files.
+
+        Returns:
+            None.
+        """
+        # Only continue if the image file exists
+        if os.path.isfile(filename):
+            # Delete the document
+            if delete_file:
+                os.remove(filename)
+            # Get base filename
+            baseName = os.path.basename(filename)
+            # Get the name of the embedding file associated with this image file
+            pattern = f'{parent_folder}/{EMBEDDINGS_STORAGE}/{self.embedding_model_name}/{self.sentences_per_chunk}_spc/{baseName}*.npy'
+            documentEmbeddings = glob(pattern)
+            # Remove all embeddings for each document chunk
+            for embeddingFilename in documentEmbeddings:
+                # Load the embedding vector from file
+                with open(embeddingFilename, 'rb') as f:
+                    embedding = np.load(f).T
+                # Remove the embedding vector from the KD Tree
+                self.index.remove(embedding.T)
+                self.search = KDTreeSearch(self.index, self.measure)
+                # Delete the embedding file
+                if delete_file:
+                    os.remove(embeddingFilename)
 
 
 if __name__ == "__main__":
